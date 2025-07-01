@@ -4,9 +4,9 @@
     RUN python -m venv /opt/venv
     ENV PATH="/opt/venv/bin:$PATH"
     RUN pip install --upgrade pip
-    COPY requirements.txt .
+    COPY services/pos-poller/requirements.txt .
     RUN pip install -r requirements.txt
-    COPY . .
+    COPY services/pos-poller/ .
     
     # --- Stage 2: Final Production Image ---
     FROM python:3.9-slim-bullseye

@@ -2,29 +2,33 @@
 # It builds the Docker images for both services and pushes them to Artifact Registry.
 
 steps:
-  # Step 1: Build the pos-poller service image
-  - name: 'gcr.io/cloud-builders/docker'
-    id: 'Build pos-poller'
-    args:
-      - 'build'
-      - '-t'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO_NAME}/pos-poller:${SHORT_SHA}'
-      - '--cache-from'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO_NAME}/pos-poller:latest'
-      - './pos-poller'
+# Step 1: Build the pos-poller service image
+# Build using the root directory '.' as context and specifying the Dockerfile path with -f
+- name: 'gcr.io/cloud-builders/docker'
+  id: 'Build pos-poller'
+  args:
+    - 'build'
+    - '-t'
+    - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO_NAME}/pos-poller:${SHORT_SHA}'
+    - '--cache-from'
+    - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO_NAME}/pos-poller:latest'
+    - '-f'
+    - 'services/pos-poller/Dockerfile'
+    - '.'
 
-  # Step 2: Build the pos-processor service image
-  - name: 'gcr.io/cloud-builders/docker'
-    id: 'Build pos-processor'
-    args:
-      - 'build'
-      - '-t'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO_NAME}/pos-processor:${SHORT_SHA}'
-      - '--cache-from'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO_NAME}/pos-processor:latest'
-      - '-f' # Add the -f flag to specify the Dockerfile location
-      - 'services/pos-processor/Dockerfile' # Path to the Dockerfile
-      - '.' # Set the build context to the repository root
+# Step 2: Build the pos-processor service image
+# Build using the root directory '.' as context and specifying the Dockerfile path with -f
+- name: 'gcr.io/cloud-builders/docker'
+  id: 'Build pos-processor'
+  args:
+    - 'build'
+    - '-t'
+    - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO_NAME}/pos-processor:${SHORT_SHA}'
+    - '--cache-from'
+    - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO_NAME}/pos-processor:latest'
+    - '-f'
+    - 'services/pos-processor/Dockerfile'
+    - '.'
 
 # List of images to push to Artifact Registry upon successful build.
 # Cloud Build will push these images in parallel.
