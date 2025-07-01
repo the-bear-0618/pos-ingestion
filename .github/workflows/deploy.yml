@@ -37,25 +37,25 @@ jobs:
 
       # 3. Trigger Cloud Build to build and push Docker images
       # This uses the cloudbuild.yaml file at the root of your repo
-        name: Build and Push Docker Images
-          id: 'build'
-          run: |-
-            gcloud builds submit --config cloudbuild.yaml \
-              --substitutions=SHORT_SHA=${{ github.sha }} \
-              --project=${{ env.PROJECT_ID }} \
-              --service-account=projects/${{ env.PROJECT_ID }}/serviceAccounts/manual-cloud-build-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com
+      - name: Build and Push Docker Images
+        id: 'build'
+        run: |-
+          gcloud builds submit --config cloudbuild.yaml \
+            --substitutions=SHORT_SHA=${{ github.sha }} \
+            --project=${{ env.PROJECT_ID }} \
+            --service-account=projects/${{ env.PROJECT_ID }}/serviceAccounts/manual-cloud-build-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com
 
       # 4. Deploy the pos-poller service to Cloud Run
       - name: Deploy pos-poller
-          id: 'deploy-poller'
-          run: |-
-            gcloud run deploy pos-poller \
-              --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.AR_REPO_NAME }}/pos-poller:${{ github.sha }} \
-              --service-account pos-poller-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
-              --region ${{ env.REGION }} \
-              --project ${{ env.PROJECT_ID }} \
-              --no-allow-unauthenticated \
-              --set-secrets="API_BASE_URL=API_BASE_URL:latest,API_USERNAME_SECRET_ID=API_USERNAME_SECRET_ID:latest,API_PASSWORD_SECRET_ID=API_PASSWORD_SECRET_ID:latest"
+        id: 'deploy-poller'
+        run: |-
+          gcloud run deploy pos-poller \
+            --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.AR_REPO_NAME }}/pos-poller:${{ github.sha }} \
+            --service-account pos-poller-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
+            --region ${{ env.REGION }} \
+            --project ${{ env.PROJECT_ID }} \
+            --no-allow-unauthenticated \
+            --set-secrets="API_BASE_URL=API_BASE_URL:latest,API_USERNAME_SECRET_ID=API_USERNAME_SECRET_ID:latest,API_PASSWORD_SECRET_ID=API_PASSWORD_SECRET_ID:latest"
 
       # 5. Deploy the pos-processor service to Cloud Run
       - name: Deploy pos-processor
@@ -68,7 +68,7 @@ jobs:
             --project ${{ env.PROJECT_ID }} \
             --no-allow-unauthenticated \
             --set-secrets="BIGQUERY_DATASET_ID=BIGQUERY_DATASET_ID:latest"
-      
+
       # 6. Update the Pub/Sub subscription to point to the new processor revision
       - name: Update Pub/Sub Subscription
         id: 'update-subscription'
