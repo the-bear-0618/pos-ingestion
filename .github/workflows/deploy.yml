@@ -24,30 +24,20 @@ jobs:
 
       - name: Authenticate to Google Cloud
         id: 'auth'
-        uses: 'google-github-actions/auth@v2'
+        uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
           service_account: ${{ secrets.GCP_SA_EMAIL }}
-          token_format: access_token
-          export_environment_variables: false
 
-      - name: Install latest gcloud SDK
+      - name: Install gcloud CLI
         uses: google-github-actions/setup-gcloud@v2
-        with:
-          version: '>=445.0.0'
 
-      - name: Activate access token for gcloud
-        run: |
-          gcloud config set account workload_identity_user
-          echo "${{ steps.auth.outputs.access_token }}" | gcloud auth activate-access-token -
-
-      - name: Build and Push Docker Images
+      - name: Build and Push Docker Images via Cloud Build
         id: 'build'
         run: |
           gcloud builds submit --config cloudbuild.yaml \
             --substitutions=SHORT_SHA=${{ github.sha }} \
-            --project=${{ env.PROJECT_ID }} \
-            --service-account=projects/${{ env.PROJECT_ID }}/serviceAccounts/manual-cloud-build-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com
+            --project=${{ env.PROJECT_ID }}
 
       - name: Deploy pos-poller
         id: 'deploy-poller'
@@ -73,8 +63,10 @@ jobs:
 
       - name: Update Pub/Sub Subscription
         id: 'update-subscription'
+        env:
+          PROCESSOR_URL: ${{ steps.deploy-processor.outputs.url }}
         run: |
           gcloud pubsub subscriptions update pos-processor-sub \
-            --push-endpoint=${{ steps.deploy-processor.outputs.url }} \
+            --push-endpoint=${PROCESSOR_URL} \
             --push-auth-service-account=pos-processor-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
             --project ${{ env.PROJECT_ID }}
