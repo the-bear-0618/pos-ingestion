@@ -2,7 +2,6 @@
 
 name: Build and Deploy to Cloud Run
 
-# Trigger this workflow on a push to the main branch (e.g., after a PR is merged)
 on:
   push:
     branches: [ main ]
@@ -17,7 +16,6 @@ jobs:
     name: Build and Deploy
     runs-on: ubuntu-latest
 
-    # Add permissions to fetch an OIDC token from GitHub
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -35,16 +33,16 @@ jobs:
           workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
           service_account: ${{ secrets.GCP_SA_EMAIL }}
 
-      # 3. Clear any residual credential overrides (forces use of WIF identity)
-      - name: Clear all residual credential overrides
+      # 3. Clear any residual credential overrides (env-level fix)
+      - name: Clear residual credential overrides
         run: |
+          echo "Unsetting GCP credential override environment variables..."
           gcloud config unset auth/credential_file_override || true
-          unset GOOGLE_APPLICATION_CREDENTIALS
-          unset CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE
-          unset GOOGLE_GHA_CREDS_PATH
+          echo "CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE=" >> $GITHUB_ENV
+          echo "GOOGLE_APPLICATION_CREDENTIALS=" >> $GITHUB_ENV
+          echo "GOOGLE_GHA_CREDS_PATH=" >> $GITHUB_ENV
 
       # 4. Trigger Cloud Build to build and push Docker images
-      # This uses the cloudbuild.yaml file at the root of your repo
       - name: Build and Push Docker Images
         id: 'build'
         run: |-
