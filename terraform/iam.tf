@@ -1,4 +1,6 @@
 # terraform/iam.tf
+#
+# Defines all Service Accounts and IAM permissions for the project.
 
 # Data block to get the Project Number, which is needed to construct the
 # full email of the Google-managed Pub/Sub service account.
@@ -7,6 +9,7 @@ data "google_project" "project" {}
 
 # -----------------------------------------------------------------------------
 # Service Account for the POS Poller Service
+# This account is used by the pos-poller Cloud Run service.
 # -----------------------------------------------------------------------------
 resource "google_service_account" "pos_poller_sa" {
   project      = var.gcp_project_id
@@ -34,6 +37,7 @@ resource "google_project_iam_member" "poller_can_access_secrets" {
 
 # -----------------------------------------------------------------------------
 # Service Account for the POS Processor Service
+# This account is used by the pos-processor Cloud Run service.
 # -----------------------------------------------------------------------------
 resource "google_service_account" "pos_processor_sa" {
   project      = var.gcp_project_id
@@ -59,14 +63,15 @@ resource "google_bigquery_dataset_iam_member" "processor_can_write_to_bq" {
 # Allow the Google-managed Pub/Sub service account to invoke our Cloud Run
 # services. This is required for authenticated push subscriptions.
 resource "google_project_iam_member" "pubsub_can_invoke_run" {
-  # --- THIS IS THE FIX ---
-  project = var.gcp_project_id # Corrected: Was var.g_project_id
+  project = var.gcp_project_id
   role    = "roles/run.invoker"
   member  = "serviceAccount:service-${data.google_project.project.number}@gcp-sa-pubsub.iam.gserviceaccount.com"
 }
 
+
 # -----------------------------------------------------------------------------
 # Service Account for CI/CD (GitHub Actions)
+# This account is used by the GitHub Actions workflow to deploy the application.
 # -----------------------------------------------------------------------------
 resource "google_service_account" "github_actions_deployer_sa" {
   project      = var.gcp_project_id
@@ -83,6 +88,15 @@ resource "google_project_iam_member" "deployer_can_edit_builds" {
   member  = google_service_account.github_actions_deployer_sa.member
 }
 
+# Allow it to write source code to the Cloud Build GCS bucket
+resource "google_project_iam_member" "deployer_can_write_to_storage" {
+  project = var.gcp_project_id
+  # NOTE: Reverted to storage.admin. The more restrictive objectAdmin role was
+  # insufficient for the 'gcloud builds submit' command's requirements.
+  role    = "roles/storage.admin"
+  member  = google_service_account.github_actions_deployer_sa.member
+}
+
 # Allow it to deploy and manage Cloud Run services
 resource "google_project_iam_member" "deployer_can_admin_run" {
   project = var.gcp_project_id
@@ -90,17 +104,19 @@ resource "google_project_iam_member" "deployer_can_admin_run" {
   member  = google_service_account.github_actions_deployer_sa.member
 }
 
-# Allow it to act as an IAM user to set SAs on Cloud Run services
-resource "google_project_iam_member" "deployer_is_sa_user" {
-  project = var.gcp_project_id
-  role    = "roles/iam.serviceAccountUser"
-  member  = google_service_account.github_actions_deployer_sa.member
+# Allow the deployer to act as the runtime service accounts for Cloud Run.
+# This is more secure than granting the iam.serviceAccountUser role at the project level.
+
+# Allow the deployer SA to act as the pos-poller's runtime SA
+resource "google_service_account_iam_member" "deployer_can_act_as_poller_sa" {
+  service_account_id = google_service_account.pos_poller_sa.name
+  role               = "roles/iam.serviceAccountUser"
+  member             = google_service_account.github_actions_deployer_sa.member
 }
 
-# --- THIS IS THE FIX ---
-# Allow it to write source code to the Cloud Build GCS bucket
-resource "google_project_iam_member" "deployer_can_admin_storage" {
-  project = var.gcp_project_id
-  role    = "roles/storage.admin"
-  member  = google_service_account.github_actions_deployer_sa.member
+# Allow the deployer SA to act as the pos-processor's runtime SA
+resource "google_service_account_iam_member" "deployer_can_act_as_processor_sa" {
+  service_account_id = google_service_account.pos_processor_sa.name
+  role               = "roles/iam.serviceAccountUser"
+  member             = google_service_account.github_actions_deployer_sa.member
 }
