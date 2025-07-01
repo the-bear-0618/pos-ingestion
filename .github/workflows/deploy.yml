@@ -1,3 +1,5 @@
+# .github/workflows/deploy.yml
+
 name: Build and Deploy to Cloud Run
 
 on:
@@ -19,28 +21,33 @@ jobs:
       id-token: 'write'
 
     steps:
+      # 1. Check out the repository code
       - name: Check out code
         uses: actions/checkout@v4
 
+      # 2. Authenticate to Google Cloud via Workload Identity Federation
       - name: Authenticate to Google Cloud
-        id: 'auth'
+        id: auth
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
           service_account: ${{ secrets.GCP_SA_EMAIL }}
 
-      - name: Install gcloud CLI
+      # 3. Install the gcloud CLI
+      - name: Set up gcloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Build and Push Docker Images via Cloud Build
-        id: 'build'
+      # 4. Submit Cloud Build to build and push Docker images
+      - name: Build and Push Docker Images
+        id: build
         run: |
           gcloud builds submit --config cloudbuild.yaml \
             --substitutions=SHORT_SHA=${{ github.sha }} \
             --project=${{ env.PROJECT_ID }}
 
+      # 5. Deploy the pos-poller service to Cloud Run
       - name: Deploy pos-poller
-        id: 'deploy-poller'
+        id: deploy-poller
         run: |
           gcloud run deploy pos-poller \
             --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.AR_REPO_NAME }}/pos-poller:${{ github.sha }} \
@@ -50,8 +57,9 @@ jobs:
             --no-allow-unauthenticated \
             --set-secrets="API_BASE_URL=API_BASE_URL:latest,API_USERNAME_SECRET_ID=API_USERNAME_SECRET_ID:latest,API_PASSWORD_SECRET_ID=API_PASSWORD_SECRET_ID:latest"
 
+      # 6. Deploy the pos-processor service to Cloud Run
       - name: Deploy pos-processor
-        id: 'deploy-processor'
+        id: deploy-processor
         run: |
           gcloud run deploy pos-processor \
             --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.AR_REPO_NAME }}/pos-processor:${{ github.sha }} \
@@ -61,8 +69,9 @@ jobs:
             --no-allow-unauthenticated \
             --set-secrets="BIGQUERY_DATASET_ID=BIGQUERY_DATASET_ID:latest"
 
+      # 7. Update the Pub/Sub subscription to point to the new processor revision
       - name: Update Pub/Sub Subscription
-        id: 'update-subscription'
+        id: update-subscription
         env:
           PROCESSOR_URL: ${{ steps.deploy-processor.outputs.url }}
         run: |
