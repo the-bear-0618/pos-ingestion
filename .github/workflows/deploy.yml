@@ -38,7 +38,7 @@ jobs:
           gcloud builds submit --config cloudbuild.yaml \
             --substitutions=SHORT_SHA=${{ github.sha }} \
             --project=${{ env.PROJECT_ID }} \
-            --service-account=manual-cloud-build-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com # <-- THIS IS THE FIX
+            --service-account=projects/${{ env.PROJECT_ID }}/serviceAccounts/manual-cloud-build-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com
 
       - name: Deploy pos-poller to Cloud Run
         id: deploy-poller
@@ -54,9 +54,6 @@ jobs:
       - name: Deploy pos-processor to Cloud Run
         id: deploy-processor
         run: |
-          # The gcloud command prints the URL, but capturing it reliably can be tricky.
-          # The next step assumes this command's output can be read. A more robust
-          # solution is to use the dedicated 'google-github-actions/deploy-cloudrun' action.
           gcloud run deploy pos-processor \
             --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.AR_REPO_NAME }}/pos-processor:${{ github.sha }} \
             --service-account pos-processor-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
@@ -68,7 +65,7 @@ jobs:
       - name: Update Pub/Sub Subscription push endpoint
         id: update-subscription
         run: |
-          # This step gets the URL of the 'pos-processor' service to update the subscription
+          # Actively query for the URL of the newly deployed pos-processor service
           PROCESSOR_URL=$(gcloud run services describe pos-processor \
             --platform managed \
             --region ${{ env.REGION }} \
