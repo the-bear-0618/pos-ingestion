@@ -13,7 +13,7 @@ steps:
     - '--cache-from'
     - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO_NAME}/pos-poller:latest'
     - '-f'
-    - 'services/pos-poller/Dockerfile'
+    - 'pos-poller/Dockerfile'
     - '.'
 
 # Step 2: Build the pos-processor service image
@@ -27,11 +27,10 @@ steps:
     - '--cache-from'
     - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO_NAME}/pos-processor:latest'
     - '-f'
-    - 'services/pos-processor/Dockerfile'
+    - 'pos-processor/Dockerfile'
     - '.'
 
 # List of images to push to Artifact Registry upon successful build.
-# Cloud Build will push these images in parallel.
 images:
   - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO_NAME}/pos-poller:${SHORT_SHA}'
   - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO_NAME}/pos-processor:${SHORT_SHA}'
@@ -41,7 +40,6 @@ options:
   logging: CLOUD_LOGGING_ONLY
 
 # Custom user-defined substitutions.
-# These provide default values and can be overridden at trigger time.
 substitutions:
   _REGION: 'us-central1'
   _AR_REPO_NAME: 'pos-ingestion-repo'

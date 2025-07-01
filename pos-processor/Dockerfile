@@ -4,9 +4,9 @@
     RUN python -m venv /opt/venv
     ENV PATH="/opt/venv/bin:$PATH"
     RUN pip install --upgrade pip
-    COPY services/pos-processor/requirements.txt .
+    COPY pos-processor/requirements.txt .
     RUN pip install -r requirements.txt
-    COPY services/pos-processor/ /app/
+    COPY pos-processor/ /app/
     COPY schemas/ /app/schemas/
     
     # --- Stage 2: Final Production Image ---
@@ -19,6 +19,4 @@
     USER appuser
     EXPOSE 8080
     ENV PORT 8080
-    # --- THIS IS THE FIX ---
-    # Use shell form to allow environment variable substitution for PORT.
     CMD gunicorn --bind 0.0.0.0:${PORT} --workers 2 --threads 4 main:app
