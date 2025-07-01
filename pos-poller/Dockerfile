@@ -20,6 +20,5 @@
     ENV PORT 8080
     ENV WORKERS 2
     ENV THREADS 4
-    # --- THIS IS THE FIX ---
     # Use shell form to allow environment variable substitution for PORT, WORKERS, etc.
     CMD gunicorn --bind 0.0.0.0:${PORT} --workers ${WORKERS} --threads ${THREADS} main:app
