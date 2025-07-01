@@ -82,4 +82,3 @@ jobs:
             --push-endpoint=${{ steps.deploy-processor.outputs.url }} \
             --push-auth-service-account=pos-processor-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
             --project=${{ env.PROJECT_ID }}
-git add .github/workflows/deploy.yml
