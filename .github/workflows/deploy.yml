@@ -35,9 +35,13 @@ jobs:
           workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
           service_account: ${{ secrets.GCP_SA_EMAIL }}
 
-      # 3. Clear any leftover credential overrides (forces use of WIF identity)
-      - name: Clear credential override
-        run: gcloud config unset auth/credential_file_override
+      # 3. Clear any residual credential overrides (forces use of WIF identity)
+      - name: Clear all residual credential overrides
+        run: |
+          gcloud config unset auth/credential_file_override || true
+          unset GOOGLE_APPLICATION_CREDENTIALS
+          unset CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE
+          unset GOOGLE_GHA_CREDS_PATH
 
       # 4. Trigger Cloud Build to build and push Docker images
       # This uses the cloudbuild.yaml file at the root of your repo
