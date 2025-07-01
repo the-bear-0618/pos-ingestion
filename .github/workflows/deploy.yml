@@ -32,21 +32,17 @@ jobs:
         with:
           workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
           service_account: ${{ secrets.GCP_SA_EMAIL }}
+          export_environment_variables: false
+          token_format: access_token
 
-      # 3. Set active gcloud account from Workload Identity
-      - name: Set active gcloud account
-        run: gcloud config set account ${{ steps.auth.outputs.account }}
-
-      # 4. Clear any residual credential overrides (env-level fix)
+      # 3. Fully clear any residual credential override env vars
       - name: Clear residual credential overrides
         run: |
-          echo "Unsetting GCP credential override environment variables..."
-          gcloud config unset auth/credential_file_override || true
           echo "CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE=" >> $GITHUB_ENV
           echo "GOOGLE_APPLICATION_CREDENTIALS=" >> $GITHUB_ENV
           echo "GOOGLE_GHA_CREDS_PATH=" >> $GITHUB_ENV
 
-      # 5. Trigger Cloud Build to build and push Docker images
+      # 4. Trigger Cloud Build to build and push Docker images
       - name: Build and Push Docker Images
         id: 'build'
         run: |-
@@ -55,7 +51,7 @@ jobs:
             --project=${{ env.PROJECT_ID }} \
             --service-account=projects/${{ env.PROJECT_ID }}/serviceAccounts/manual-cloud-build-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com
 
-      # 6. Deploy the pos-poller service to Cloud Run
+      # 5. Deploy the pos-poller service to Cloud Run
       - name: Deploy pos-poller
         id: 'deploy-poller'
         run: |-
@@ -67,7 +63,7 @@ jobs:
             --no-allow-unauthenticated \
             --set-secrets="API_BASE_URL=API_BASE_URL:latest,API_USERNAME_SECRET_ID=API_USERNAME_SECRET_ID:latest,API_PASSWORD_SECRET_ID=API_PASSWORD_SECRET_ID:latest"
 
-      # 7. Deploy the pos-processor service to Cloud Run
+      # 6. Deploy the pos-processor service to Cloud Run
       - name: Deploy pos-processor
         id: 'deploy-processor'
         run: |-
@@ -79,7 +75,7 @@ jobs:
             --no-allow-unauthenticated \
             --set-secrets="BIGQUERY_DATASET_ID=BIGQUERY_DATASET_ID:latest"
 
-      # 8. Update the Pub/Sub subscription to point to the new processor revision
+      # 7. Update the Pub/Sub subscription to point to the new processor revision
       - name: Update Pub/Sub Subscription
         id: 'update-subscription'
         run: |-
