@@ -1,0 +1,41 @@
+# This file defines the build process for Google Cloud Build.
+# It builds the Docker images for both services and pushes them to Artifact Registry.
+
+steps:
+  # Step 1: Build the pos-poller service image
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'Build pos-poller'
+    args:
+      - 'build'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO_NAME}/pos-poller:${SHORT_SHA}'
+      - '--cache-from'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO_NAME}/pos-poller:latest'
+      - './pos-poller'
+
+  # Step 2: Build the pos-processor service image
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'Build pos-processor'
+    args:
+      - 'build'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO_NAME}/pos-processor:${SHORT_SHA}'
+      - '--cache-from'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO_NAME}/pos-processor:latest'
+      - './pos-processor'
+
+# List of images to push to Artifact Registry upon successful build.
+# Cloud Build will push these images in parallel.
+images:
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO_NAME}/pos-poller:${SHORT_SHA}'
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO_NAME}/pos-processor:${SHORT_SHA}'
+
+# Configuration for build process
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+# Custom user-defined substitutions.
+# These provide default values and can be overridden at trigger time.
+substitutions:
+  _REGION: 'us-central1'
+  _AR_REPO_NAME: 'pos-ingestion-repo'

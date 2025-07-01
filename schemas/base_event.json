@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.crownpointrestaurant.com/pos/_base_event.json",
+  "title": "Base POS Event",
+  "description": "A base schema defining the common envelope for all POS events from the API.",
+  "type": "object",
+  "properties": {
+    "record_id": {
+      "type": "string",
+      "description": "Deterministic hash for deduplication (12-character hex string)."
+    },
+    "sync_id": {
+      "type": "string",
+      "description": "Sync batch identifier with format: {TableName}_{YYYYMMDD}_{HHMMSS}."
+    },
+    "processed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when the record was processed by the pipeline."
+    },
+    "event_type": {
+      "type": "string",
+      "description": "Event type identifier (e.g., pos.checks)."
+    },
+    "table_name": {
+      "type": "string",
+      "description": "Target BigQuery table name (e.g., pos_checks)."
+    },
+    "data": {
+      "type": "object",
+      "description": "The actual record data payload."
+    }
+  },
+  "required": [
+    "record_id",
+    "sync_id",
+    "processed_at",
+    "event_type",
+    "table_name",
+    "data"
+  ]
+}

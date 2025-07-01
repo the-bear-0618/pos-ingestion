@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.crownpointrestaurant.com/pos/item_sale_adjustments.json",
+  "title": "POS ItemSaleAdjustments Schema",
+  "description": "Schema for POS item sale adjustments (discounts, voids) from the API, based on the provided raw data.",
+  "allOf": [
+    {
+      "$ref": "https://schemas.crownpointrestaurant.com/pos/_base_event.json"
+    }
+  ],
+  "properties": {
+    "sync_id": {
+      "description": "Sync batch identifier for ItemSaleAdjustments.",
+      "pattern": "^ItemSaleAdjustments_\\d{8}_\\d{6}$"
+    },
+    "event_type": {
+      "const": "pos.item_sale_adjustments"
+    },
+    "table_name": {
+      "const": "pos_item_sale_adjustments"
+    },
+    "data": {
+      "type": "object",
+      "description": "The actual item sale adjustment record data.",
+      "properties": {
+        "id": { "type": ["string", "integer"] },
+        "object_id": { "type": "string", "format": "uuid" },
+        "business_date": { "type": "string", "format": "date-time" },
+        "transaction_time": { "type": "string", "format": "date-time" },
+        "item_sale_id": { "type": ["string", "integer"] },
+        "item_sale_object_id": { "type": ["string", "null"], "format": "uuid" },
+        "item_name": { "type": ["string", "null"] },
+        "item_external_code": { "type": ["integer", "null"] },
+        "adjustment_type_object_id": { "type": ["string", "null"], "format": "uuid" },
+        "adjustment_type_name": { "type": ["string", "null"] },
+        "adjustment_reason_object_id": { "type": ["string", "null"], "format": "uuid" },
+        "adjustment_reason_description": { "type": ["string", "null"] },
+        "adjustment_amount": { "type": ["string", "number"] },
+        "applied_adjustment_amount": { "type": ["string", "number"] },
+        "quantity": { "type": ["string", "number"] },
+        "extended_applied_adjustment_amount": { "type": ["string", "number"] },
+        "adjusted_by_user_object_id": { "type": ["string", "null"], "format": "uuid" },
+        "adjusted_by_user_external_code": { "type": ["integer", "null"] },
+        "site_object_id": { "type": "string", "format": "uuid" },
+        "account_object_id": { "type": "string", "format": "uuid" },
+        "modified_on": { "type": "string", "format": "date-time" },
+        "adjustment_reason_external_code": { "type": ["integer", "null"] },
+        "memo": { "type": ["string", "null"] },
+        "scanned_code": { "type": ["string", "null"] },
+        "is_coupon_code": { "type": ["boolean", "null"] }
+      },
+      "additionalProperties": false,
+      "required": []
+    }
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.crownpointrestaurant.com/pos/check_gratuities.json",
+  "title": "POS CheckGratuities Schema",
+  "description": "Schema for POS check gratuity data from the API, based on CBS_Field_Needs.csv.",
+  "allOf": [
+    {
+      "$ref": "https://schemas.crownpointrestaurant.com/pos/_base_event.json"
+    }
+  ],
+  "properties": {
+    "sync_id": {
+      "description": "Sync batch identifier for CheckGratuities.",
+      "pattern": "^CheckGratuities_\\d{8}_\\d{6}$"
+    },
+    "event_type": {
+      "const": "pos.check_gratuities"
+    },
+    "table_name": {
+      "const": "pos_check_gratuities"
+    },
+    "data": {
+      "type": "object",
+      "description": "The actual check gratuity record data.",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "description": "Unique numerical identifier for the gratuity record."
+        },
+        "object_id": {
+          "type": "string",
+          "description": "Globally Unique Identifier (GUID) for the gratuity. Recommended as the primary key.",
+          "format": "uuid"
+        },
+        "check_id": {
+          "type": "integer",
+          "description": "Foreign key ID linking to the parent check."
+        },
+        "modified_on": {
+          "type": "string",
+          "description": "The timestamp of the last modification to the record.",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": []
+    }
+  }
+}

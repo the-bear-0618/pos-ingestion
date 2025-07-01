@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.crownpointrestaurant.com/pos/customers.json",
+  "title": "POS Customers Schema",
+  "description": "Schema for POS customers data from the API, based on the provided raw data.",
+  "allOf": [
+    {
+      "$ref": "https://schemas.crownpointrestaurant.com/pos/_base_event.json"
+    }
+  ],
+  "properties": {
+    "sync_id": {
+      "description": "Sync batch identifier for Customers.",
+      "pattern": "^Customers_\\d{8}_\\d{6}$"
+    },
+    "event_type": {
+      "const": "pos.customers"
+    },
+    "table_name": {
+      "const": "pos_customers"
+    },
+    "data": {
+      "type": "object",
+      "description": "The actual customer record data.",
+      "properties": {
+        "id": { "type": ["string", "integer"] },
+        "object_id": { "type": "string", "format": "uuid" },
+        "user_session_object_id": { "type": ["string", "null"], "format": "uuid" },
+        "party_info_id": { "type": ["string", "integer", "null"] },
+        "login_name": { "type": ["string", "null"] },
+        "account_number": { "type": ["string", "null"] },
+        "first_name": { "type": ["string", "null"] },
+        "last_name": { "type": ["string", "null"] },
+        "birthday": { "type": ["string", "null"], "format": "date-time" },
+        "email_address": { "type": ["string", "null"], "format": "email" },
+        "address1": { "type": ["string", "null"] },
+        "address2": { "type": ["string", "null"] },
+        "city": { "type": ["string", "null"] },
+        "state": { "type": ["string", "null"] },
+        "zip": { "type": ["string", "null"] },
+        "phone": { "type": ["string", "null"] },
+        "site_object_id": { "type": ["string", "null"], "format": "uuid" },
+        "modified_on": { "type": ["string", "null"], "format": "date-time" },
+        "account_id": { "type": ["string", "null"], "format": "uuid" }
+      },
+      "additionalProperties": false,
+      "required": []
+    }
+  }
+}

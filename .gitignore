@@ -1,0 +1,42 @@
+# Python bytecode and compiled files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual Environments
+venv/
+.venv/
+env/
+.env
+
+# Local secrets and configurations - DO NOT COMMIT
+*.local
+secrets/
+*.env.*.local
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Build and distribution artifacts
+build/
+dist/
+*.egg-info/
+*.egg
+
+# IDE / Editor specific folders
+.vscode/
+.idea/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Log files
+*.log
+
+# Terraform-specific files
+.terraform/
+*.tfstate*

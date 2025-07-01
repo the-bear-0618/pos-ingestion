@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.crownpointrestaurant.com/pos/checks.json",
+  "title": "POS Checks Schema",
+  "description": "Complete schema for POS checks data from the API.",
+  "allOf": [
+    {
+      "$ref": "https://schemas.crownpointrestaurant.com/pos/_base_event.json"
+    }
+  ],
+  "properties": {
+    "sync_id": {
+      "description": "Sync batch identifier for Checks.",
+      "pattern": "^Checks_\\d{8}_\\d{6}$"
+    },
+    "event_type": {
+      "const": "pos.checks"
+    },
+    "table_name": {
+      "const": "pos_checks"
+    },
+    "data": {
+      "type": "object",
+      "description": "The actual checks record data.",
+      "properties": {
+        "id": { "type": ["string", "integer"] },
+        "object_id": { "type": ["string", "null"], "format": "uuid" },
+        "user_session_object_id": { "type": ["string", "null"], "format": "uuid" },
+        "site_object_id": { "type": ["string", "null"], "format": "uuid" },
+        "account_object_id": { "type": ["string", "null"], "format": "uuid" },
+        "check_number": { "type": ["string", "integer", "null"] },
+        "status": { "type": ["string", "integer", "null"] },
+        "table_name": { "type": ["string", "null"] },
+        "table_number": { "type": ["string", "integer", "null"] },
+        "number_in_party": { "type": ["integer", "null"] },
+        "is_master": { "type": ["boolean", "null"] },
+        "open_date_time": { "type": ["string", "null"], "format": "date-time" },
+        "close_date_time": { "type": ["string", "null"], "format": "date-time" },
+        "seated_time": { "type": ["string", "null"], "format": "date-time" },
+        "location_cleared_time": { "type": ["string", "null"], "format": "date-time" },
+        "first_order_sent_time": { "type": ["string", "null"], "format": "date-time" },
+        "last_order_sent_time": { "type": ["string", "null"], "format": "date-time" },
+        "first_payment_time": { "type": ["string", "null"], "format": "date-time" },
+        "last_payment_time": { "type": ["string", "null"], "format": "date-time" },
+        "submit_to_kitchen_time": { "type": ["string", "null"], "format": "date-time" },
+        "owner_id": { "type": ["string", "null"], "format": "uuid" },
+        "owner_external_code": { "type": ["string", "integer", "null"] },
+        "owner_external_code2": { "type": ["string", "integer", "null"] },
+        "revenue_center": { "type": ["string", "null"] },
+        "revenue_center_external_code": { "type": ["string", "integer", "null"] },
+        "order_type_name": { "type": ["string", "null"] },
+        "order_type_external_code": { "type": ["string", "integer", "null"] },
+        "transaction_type_name": { "type": "string" },
+        "transaction_type_external_code": { "type": "integer" },
+        "site_external_code": { "type": ["string", "integer", "null"] },
+        "table_external_code": { "type": ["string", "integer", "null"] },
+        "business_date": {
+          "type": "string",
+          "description": "The business date for the check, in YYYY-MM-DD format.",
+          "format": "date"
+        },
+        "gross_sales": { "type": "number" },
+        "net_sales": { "type": "number" },
+        "non_revenue_sales": { "type": "number" },
+        "tax": { "type": "number" },
+        "discounts": { "type": "number" },
+        "comps": { "type": "number" },
+        "surcharges": { "type": "number" },
+        "gross_adjustments": { "type": "number" },
+        "non_gross_adjustments": { "type": "number" },
+        "gift_cards_sold": { "type": "number" },
+        "deposits_received": { "type": "number" },
+        "donations_received": { "type": "number" },
+        "cash_collected": { "type": "number" },
+        "credit_sales_collected": { "type": "number" },
+        "credit_tips_collected": { "type": "number" },
+        "alternate_payments_collected": { "type": "number" },
+        "alternate_tips_collected": { "type": "number" },
+        "media_collected": { "type": "number" },
+        "paidouts": { "type": "number" },
+        "tax_collected": { "type": "number" },
+        "tax_forgiven": { "type": "number" },
+        "cover_count": { "type": "integer" },
+        "memo": { "type": ["string", "null"] },
+        "party_info_id": { "type": ["integer", "null"] },
+        "modified_on": { "type": "string", "format": "date-time" },
+        "customer_object_id": { "type": ["string", "null"], "format": "uuid" },
+        "check_gratuities": { "type": ["number", "null"] },
+        "check_taxes": { "type": ["number", "null"] },
+        "check_team_users": { "type": ["string", "null"] },
+        "deposit_sales_collected": { "type": ["number", "null"] },
+        "device_id": { "type": ["integer", "null"] },
+        "device_name": { "type": ["string", "null"] },
+        "do_not_calculate_tax": { "type": ["boolean", "null"] },
+        "gift_card_sales_collected": { "type": ["number", "null"] },
+        "gift_card_tips_collected": { "type": ["number", "null"] },
+        "gratuities": { "type": "number" },
+        "item_sales": { "type": ["number", "null"] },
+        "party_info": { "type": ["string", "null"] },
+        "payments": { "type": ["number", "null"] },
+        "tax_owed": { "type": "number" },
+        "voids": { "type": "number" }
+      },
+      "additionalProperties": true
+    }
+  }
+}

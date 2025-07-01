@@ -1,0 +1,47 @@
+version: '3.3'
+
+services:
+  # 1. Google Pub/Sub Emulator Service
+  pubsub-emulator:
+    image: google/cloud-sdk:latest
+    command: gcloud beta emulators pubsub start --project=local-project --host-port=0.0.0.0:8085
+    ports:
+      - "8085:8085"
+
+  # 2. POS Poller Service
+  pos-poller:
+    build: ./pos-poller
+    volumes:
+      - ./pos-poller:/app
+    # --- THIS SECTION IS NOW CORRECTED ---
+    # It now uses the simple variable names to match your .env file
+    environment:
+      - GCP_PROJECT_ID=${GCP_PROJECT_ID}
+      - TOPIC_ID=${TOPIC_ID}
+      - API_BASE_URL=${API_BASE_URL}
+      - SITE_ID=${SITE_ID}
+      - API_ACCESS_TOKEN=${API_ACCESS_TOKEN}
+      - PYTHONDONTWRITEBYTECODE=1 
+      - PUBSUB_EMULATOR_HOST=pubsub-emulator:8085
+    ports:
+      - "8080:8080"
+    depends_on:
+      - pubsub-emulator
+
+  # 3. POS Processor Service
+  pos-processor:
+    build:
+      context: .
+      dockerfile: pos-processor/Dockerfile
+    volumes:
+      - ./pos-processor:/app
+      - ./schemas:/app/schemas
+    environment:
+      - GCP_PROJECT_ID=${GCP_PROJECT_ID}
+      - BIGQUERY_DATASET_ID=${BIGQUERY_DATASET_ID}
+      - PYTHONDONTWRITEBYTECODE=1 
+      - PUBSUB_EMULATOR_HOST=pubsub-emulator:8085
+    ports:
+      - "8081:8080"
+    depends_on:
+      - pubsub-emulator

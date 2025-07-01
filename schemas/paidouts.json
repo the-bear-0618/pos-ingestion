@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.crownpointrestaurant.com/pos/paidouts.json",
+  "title": "POS Paidouts Schema",
+  "description": "Schema for POS cash paid out transactions from the API.",
+  "allOf": [ { "$ref": "https://schemas.crownpointrestaurant.com/pos/_base_event.json" } ],
+  "properties": {
+    "sync_id": { "description": "Sync batch identifier for Paidouts.", "pattern": "^Paidouts_\\d{8}_\\d{6}$" },
+    "event_type": { "const": "pos.paidouts" },
+    "table_name": { "const": "pos_paidouts" },
+    "data": {
+      "type": "object",
+      "description": "The actual paidout record data.",
+      "properties": {
+        "business_date": {
+          "type": "string",
+          "description": "The business date for the paidout, in YYYY-MM-DD format.",
+          "format": "date"
+        },
+        "id": { "type": ["string", "integer"] },
+        "object_id": { "type": "string", "format": "uuid" },
+        "account_object_id": { "type": "string", "format": "uuid" },
+        "site_object_id": { "type": "string", "format": "uuid" },
+        "employee_object_id": { "type": ["string", "null"], "format": "uuid" },
+        "employee_name": { "type": ["string", "null"] },
+        "employee_number": { "type": ["integer", "null"] },
+        "transaction_date_time": { "type": ["string", "null"], "format": "date-time" },
+        "amount": { "type": "number" },
+        "paidout_type": { "type": ["integer", "null"] },
+        "paidout_reason_object_id": { "type": ["string", "null"], "format": "uuid" },
+        "paidout_reason": { "type": ["string", "null"] },
+        "paidout_reason_external_code": { "type": ["integer", "null"] },
+        "payment_type": { "type": ["integer", "null"] },
+        "payment_number": { "type": ["integer", "null"] },
+        "notes": { "type": ["string", "null"] },
+        "modified_on": { "type": "string", "format": "date-time" },
+        "drawer_id": { "type": ["string", "null"], "format": "uuid" },
+        "authorized_by_user_id": { "type": ["string", "null"] },
+        "authorized_by_user_name": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false,
+      "required": []
+    }
+  }
+}

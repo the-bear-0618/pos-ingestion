@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.crownpointrestaurant.com/pos/item_sale_components.json",
+  "title": "POS ItemSaleComponents Schema",
+  "description": "Schema for POS item sale components (modifiers) from the API, based on the provided raw data.",
+  "allOf": [
+    {
+      "$ref": "https://schemas.crownpointrestaurant.com/pos/_base_event.json"
+    }
+  ],
+  "properties": {
+    "sync_id": {
+      "description": "Sync batch identifier for ItemSaleComponents.",
+      "pattern": "^ItemSaleComponents_\\d{8}_\\d{6}$"
+    },
+    "event_type": {
+      "const": "pos.item_sale_components"
+    },
+    "table_name": {
+      "const": "pos_item_sale_components"
+    },
+    "data": {
+      "type": "object",
+      "description": "The actual item sale component record data.",
+      "properties": {
+        "id": { "type": ["string", "integer"] },
+        "object_id": { "type": "string", "format": "uuid" },
+        "site_object_id": { "type": "string", "format": "uuid" },
+        "account_object_id": { "type": "string", "format": "uuid" },
+        "component_id": { "type": ["string", "null"], "format": "uuid" },
+        "name": { "type": ["string", "null"] },
+        "price": { "type": ["string", "number", "null"] },
+        "tax": { "type": ["string", "number", "null"] },
+        "placement_location_tag": { "type": ["integer", "null"] },
+        "item_sale_id": { "type": ["string", "integer"] },
+        "modified_on": { "type": "string", "format": "date-time" },
+        "description": { "type": ["string", "null"] },
+        "external_code": { "type": ["integer", "null"] },
+        "cover_count": { "type": ["string", "number", "null"] },
+        "is_default": { "type": ["boolean", "null"] }
+      },
+      "additionalProperties": false,
+      "required": []
+    }
+  }
+}

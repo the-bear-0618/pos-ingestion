@@ -1,0 +1,77 @@
+# .github/workflows/deploy.yml
+
+name: Build and Deploy to Cloud Run
+
+# Trigger this workflow on a push to the main branch (e.g., after a PR is merged)
+on:
+  push:
+    branches: [ main ]
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: us-central1
+  AR_REPO_NAME: pos-ingestion-repo
+
+jobs:
+  deploy:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
+
+    # Add permissions to fetch an OIDC token from GitHub
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    steps:
+      # 1. Check out the repository code
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      # 2. Authenticate to Google Cloud using Workload Identity Federation
+      - name: Authenticate to Google Cloud
+        id: 'auth'
+        uses: 'google-github-actions/auth@v2'
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_SA_EMAIL }}
+
+      # 3. Trigger Cloud Build to build and push Docker images
+      # This uses the cloudbuild.yaml file at the root of your repo
+      - name: Build and Push Docker Images
+        id: 'build'
+        run: |-
+          gcloud builds submit --config cloudbuild.yaml \
+            --substitutions=SHORT_SHA=${{ github.sha }}
+
+      # 4. Deploy the pos-poller service to Cloud Run
+      - name: Deploy pos-poller
+        id: 'deploy-poller'
+        run: |-
+          gcloud run deploy pos-poller \
+            --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.AR_REPO_NAME }}/pos-poller:${{ github.sha }} \
+            --service-account pos-poller-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
+            --region ${{ env.REGION }} \
+            --project ${{ env.PROJECT_ID }} \
+            --no-allow-unauthenticated \
+            --set-secrets="API_BASE_URL=API_BASE_URL:latest,API_USERNAME_SECRET_ID=API_USERNAME_SECRET_ID:latest,API_PASSWORD_SECRET_ID=API_PASSWORD_SECRET_ID:latest"
+
+      # 5. Deploy the pos-processor service to Cloud Run
+      - name: Deploy pos-processor
+        id: 'deploy-processor'
+        run: |-
+          gcloud run deploy pos-processor \
+            --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.AR_REPO_NAME }}/pos-processor:${{ github.sha }} \
+            --service-account pos-processor-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
+            --region ${{ env.REGION }} \
+            --project ${{ env.PROJECT_ID }} \
+            --no-allow-unauthenticated \
+            --set-secrets="BIGQUERY_DATASET_ID=BIGQUERY_DATASET_ID:latest"
+      
+      # 6. Update the Pub/Sub subscription to point to the new processor revision
+      - name: Update Pub/Sub Subscription
+        id: 'update-subscription'
+        run: |-
+          gcloud pubsub subscriptions update pos-processor-sub \
+            --push-endpoint=${{ steps.deploy-processor.outputs.url }} \
+            --push-auth-service-account=pos-processor-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
+            --project ${{ env.PROJECT_ID }}

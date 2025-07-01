@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.crownpointrestaurant.com/pos/payments.json",
+  "title": "POS Payments Schema",
+  "description": "Schema for POS payment transactions from the API, based on the provided raw data.",
+  "allOf": [
+    {
+      "$ref": "https://schemas.crownpointrestaurant.com/pos/_base_event.json"
+    }
+  ],
+  "properties": {
+    "sync_id": {
+      "description": "Sync batch identifier for Payments.",
+      "pattern": "^Payments_\\d{8}_\\d{6}$"
+    },
+    "event_type": {
+      "const": "pos.payments"
+    },
+    "table_name": {
+      "const": "pos_payments"
+    },
+    "data": {
+      "type": "object",
+      "description": "The actual payment record data.",
+      "properties": {
+        "id": { "type": ["string", "integer"] },
+        "object_id": { "type": "string", "format": "uuid" },
+        "site_object_id": { "type": ["string", "null"], "format": "uuid" },
+        "account_object_id": { "type": ["string", "null"], "format": "uuid" },
+        "payment_number": { "type": ["integer", "null"] },
+        "check_id": { "type": ["string", "integer"] },
+        "check_number": { "type": ["integer", "null"] },
+        "business_date": { "type": ["string", "null"], "format": "date-time" },
+        "daypart_name": { "type": ["string", "null"] },
+        "daypart_external_code": { "type": ["integer", "null"] },
+        "revenue_center": { "type": ["string", "null"] },
+        "revenue_center_external_code": { "type": ["integer", "null"] },
+        "tender_type": { "type": ["integer", "null"] },
+        "tender_type_name": { "type": ["string", "null"] },
+        "total_amount": { "type": ["string", "number", "null"] },
+        "tip_amount": { "type": ["string", "number", "null"] },
+        "auto_tip_amount": { "type": ["string", "number", "null"] },
+        "authorization_code": { "type": ["string", "null"] },
+        "reference_code": { "type": ["string", "null"] },
+        "tender_option": { "type": ["integer", "null"] },
+        "tender_option_name": { "type": ["string", "null"] },
+        "credit_card_type": { "type": ["string", "null"] },
+        "card_number": { "type": ["string", "null"] },
+        "cardholder_name": { "type": ["string", "null"] },
+        "authorization_status": { "type": ["string", "null"] },
+        "transaction_type": { "type": ["integer", "null"] },
+        "transaction_type_name": { "type": ["string", "null"] },
+        "modified_on": { "type": ["string", "null"], "format": "date-time" },
+        "voided": { "type": ["boolean", "null"] },
+        "drawer_id": { "type": ["string", "null"], "format": "uuid" },
+        "drawer_name": { "type": ["string", "null"] },
+        "drawer_device_name": { "type": ["string", "null"] },
+        "refund": { "type": ["boolean", "null"] },
+        "change_due": { "type": ["string", "number", "null"] },
+        "tender_amount": { "type": ["string", "number", "null"] },
+        "payment_device_id": { "type": ["string", "null"] },
+        "payer_id": { "type": ["string", "null"] },
+        "card_class": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false,
+      "required": []
+    }
+  }
+}

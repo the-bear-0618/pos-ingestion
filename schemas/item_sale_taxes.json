@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.crownpointrestaurant.com/pos/item_sale_taxes.json",
+  "title": "POS ItemSaleTaxes Schema",
+  "description": "Schema for POS tax data on individual item sales from the API, based on the provided raw data.",
+  "allOf": [
+    {
+      "$ref": "https://schemas.crownpointrestaurant.com/pos/_base_event.json"
+    }
+  ],
+  "properties": {
+    "sync_id": {
+      "description": "Sync batch identifier for ItemSaleTaxes.",
+      "pattern": "^ItemSaleTaxes_\\d{8}_\\d{6}$"
+    },
+    "event_type": {
+      "const": "pos.item_sale_taxes"
+    },
+    "table_name": {
+      "const": "pos_item_sale_taxes"
+    },
+    "data": {
+      "type": "object",
+      "description": "The actual item sale tax record data.",
+      "properties": {
+        "id": { "type": ["string", "integer"] },
+        "item_sale_id": { "type": ["string", "integer"] },
+        "object_id": { "type": "string", "format": "uuid" },
+        "tax_object_id": { "type": ["string", "null"], "format": "uuid" },
+        "site_object_id": { "type": "string", "format": "uuid" },
+        "account_object_id": { "type": "string", "format": "uuid" },
+        "name": { "type": ["string", "null"] },
+        "display_name": { "type": ["string", "null"] },
+        "rate": { "type": ["string", "number", "null"] },
+        "exempt": { "type": ["boolean", "null"] },
+        "amount": { "type": ["string", "number", "null"] },
+        "forgiven": { "type": ["string", "number", "null"] },
+        "modified_on": { "type": "string", "format": "date-time" },
+        "business_date": { "type": "string", "format": "date-time" },
+        "external_code": { "type": ["integer", "null"] }
+      },
+      "additionalProperties": false,
+      "required": []
+    }
+  }
+}
