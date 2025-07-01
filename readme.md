@@ -135,3 +135,57 @@ This repository is configured with GitHub Actions for Continuous Integration and
 
 * **On Pull Request:** The `test.yml` workflow is triggered to run all `pytest` tests.
 * **On Merge to `main`:** The `deploy.yml` workflow is triggered. It orchestrates the process of building the service images using Google Cloud Build and deploying them to Cloud Run.
+
+
+Overall File Structure as of 7.1.25 (Pre-PROD Push)
+
+pos-ingestion/
+├── .github/                       # Directory for GitHub Actions workflows (CI/CD)
+│   └── workflows/
+│       ├── deploy.yml             # Deploys application to Cloud Run on push to main
+│       └── test.yml               # Runs tests automatically on pull requests
+├── docs/                          # Project documentation and assets
+│   └── images/
+│       └── system-architecture.png # Visual diagram of the pipeline architecture
+├── pos-poller/                    # Service to poll the POS API and publish events
+│   ├── tests/
+│   │   └── test_poller.py         # Unit and integration tests for the poller
+│   ├── config.py                  # Configuration for poller endpoints and fields
+│   ├── Dockerfile                 # Instructions to build the poller's container image
+│   ├── main.py                    # Web server entry point (Flask) for the poller
+│   ├── poller.py                  # Core logic for fetching and publishing data
+│   ├── requirements.txt           # Python libraries required by the poller
+│   └── utils.py                   # Helper functions (e.g., snake_case conversion)
+├── pos-processor/                 # Service to consume events, validate, and load to BigQuery
+│   ├── tests/
+│   │   └── test_processor.py      # Unit and integration tests for the processor
+│   ├── Dockerfile                 # Instructions to build the processor's container image
+│   ├── main.py                    # Web server entry point (Flask) that receives Pub/Sub messages
+│   ├── requirements.txt           # Python libraries required by the processor
+│   └── schema_validator.py        # Core logic for loading schemas and validating data
+├── schemas/                       # Single Source of Truth: All JSON Schema data contracts
+│   ├── base_event.json           # Defines the common message envelope for all events
+│   ├── checks.json                # Schema for the 'Checks' endpoint
+│   ├── customers.json             # Schema for the 'Customers' endpoint
+│   ├── item_sale_adjustments.json # Schema for the 'ItemSaleAdjustments' endpoint
+│   ├── item_sale_components.json  # Schema for the 'ItemSaleComponents' endpoint
+│   ├── item_sale_taxes.json       # Schema for the 'ItemSaleTaxes' endpoint
+│   ├── item_sales.json            # Schema for the 'ItemSales' endpoint
+│   ├── paidouts.json              # Schema for the 'Paidouts' endpoint
+│   ├── payments.json              # Schema for the 'Payments' endpoint
+│   └── time_records.json          # Schema for the 'TimeRecords' endpoint
+├── terraform/                     # Infrastructure as Code (IaC) for all GCP resources
+│   ├── backend.tf                 # Configures the GCS bucket for remote state storage
+│   ├── bigquery.tf                # Defines the BigQuery dataset and all 9 tables
+│   ├── iam.tf                     # Defines service accounts and their permissions
+│   ├── pubsub.tf                  # Defines Pub/Sub topics, subscriptions, and the DLQ
+│   ├── terraform.tfvars           # File to provide values for variables (e.g., project_id)
+│   └── variables.tf               # Declares input variables for the Terraform configuration
+├── .gitignore                     # Specifies files and folders for Git to ignore
+├── capture_api_data.py            # Utility script for capturing raw API data during development
+├── cloudbuild.yaml                # Defines the build process for Google Cloud Build
+├── docker-compose.yml             # Orchestrates the entire local development environment
+├── README.md                      # Main documentation for the project
+└── setup_local_pubsub.sh          # Helper script to initialize the local Pub/Sub emulator
+
+9 directories, 36 files

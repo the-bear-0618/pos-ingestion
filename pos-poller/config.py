@@ -8,7 +8,7 @@ ODATA_ENDPOINTS = {
     "Customers":           {"table_name": "pos_customers",           "date_field": "ModifiedOn",        "site_field": "Site_ObjectId"},
     "TimeRecords":         {"table_name": "pos_time_records",        "date_field": "BusinessDate",      "site_field": "Site_ObjectId"},
     "Paidouts":            {"table_name": "pos_paidouts",            "date_field": "BusinessDate",      "site_field": "Site_ObjectId"},
-    "Payments":            {"table_name": "pos_payments",            "date_field": None,                "site_field": None},
+    "Payments":            {"table_name": "pos_payments",            "date_field": "BusinessDate",                "site_field": None},
     "ItemSaleAdjustments": {"table_name": "pos_item_sale_adjustments", "date_field": "BusinessDate",      "site_field": "Site_ObjectId"},
     "ItemSaleTaxes":       {"table_name": "pos_item_sale_taxes",       "date_field": "BusinessDate",      "site_field": "Site_ObjectId"},
     "ItemSaleComponents":  {"table_name": "pos_item_sale_components",  "date_field": "BusinessDate",      "site_field": "Site_ObjectId"},
