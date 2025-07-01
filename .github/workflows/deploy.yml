@@ -47,15 +47,15 @@ jobs:
 
       # 4. Deploy the pos-poller service to Cloud Run
       - name: Deploy pos-poller
-        id: 'deploy-poller'
-        run: |-
-          gcloud run deploy pos-poller \
-            --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.AR_REPO_NAME }}/pos-poller:${{ github.sha }} \
-            --service-account pos-poller-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
-            --region ${{ env.REGION }} \
-            --project ${{ env.PROJECT_ID }} \
-            --no-allow-unauthenticated \
-            --set-secrets="API_BASE_URL=API_BASE_URL:latest,API_USERNAME_SECRET_ID=API_USERNAME_SECRET_ID:latest,API_PASSWORD_SECRET_ID=API_PASSWORD_SECRET_ID:latest"
+          id: 'deploy-poller'
+          run: |-
+            gcloud run deploy pos-poller \
+              --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.AR_REPO_NAME }}/pos-poller:${{ github.sha }} \
+              --service-account pos-poller-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
+              --region ${{ env.REGION }} \
+              --project ${{ env.PROJECT_ID }} \
+              --no-allow-unauthenticated \
+              --set-secrets="API_BASE_URL=API_BASE_URL:latest,API_USERNAME_SECRET_ID=API_USERNAME_SECRET_ID:latest,API_PASSWORD_SECRET_ID=API_PASSWORD_SECRET_ID:latest"
 
       # 5. Deploy the pos-processor service to Cloud Run
       - name: Deploy pos-processor
