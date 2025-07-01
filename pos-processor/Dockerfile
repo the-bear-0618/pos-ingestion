@@ -4,10 +4,10 @@
     RUN python -m venv /opt/venv
     ENV PATH="/opt/venv/bin:$PATH"
     RUN pip install --upgrade pip
-    COPY requirements.txt .
+    COPY services/pos-processor/requirements.txt .
     RUN pip install -r requirements.txt
-    COPY . /app/
-    COPY ../schemas/ /app/schemas/
+    COPY services/pos-processor/ /app/
+    COPY schemas/ /app/schemas/
     
     # --- Stage 2: Final Production Image ---
     FROM python:3.9-slim-bullseye

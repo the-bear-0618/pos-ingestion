@@ -22,7 +22,9 @@ steps:
       - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO_NAME}/pos-processor:${SHORT_SHA}'
       - '--cache-from'
       - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO_NAME}/pos-processor:latest'
-      - './pos-processor'
+      - '-f' # Add the -f flag to specify the Dockerfile location
+      - 'services/pos-processor/Dockerfile' # Path to the Dockerfile
+      - '.' # Set the build context to the repository root
 
 # List of images to push to Artifact Registry upon successful build.
 # Cloud Build will push these images in parallel.
