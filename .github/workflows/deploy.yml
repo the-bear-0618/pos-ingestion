@@ -19,7 +19,7 @@ jobs:
       id-token: 'write'
 
     steps:
-      - name: Checkout repository
+      - name: Check out code
         uses: actions/checkout@v4
 
       - name: Authenticate to Google Cloud
@@ -29,18 +29,19 @@ jobs:
           workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
           service_account: ${{ secrets.GCP_SA_EMAIL }}
 
-      - name: Set up gcloud SDK
+      - name: Install gcloud CLI
         uses: google-github-actions/setup-gcloud@v2
-        with:
-          version: 'latest'
 
       - name: Build and Push Docker Images via Cloud Build
+        id: build
         run: |
           gcloud builds submit --config cloudbuild.yaml \
             --substitutions=SHORT_SHA=${{ github.sha }} \
-            --project=${{ env.PROJECT_ID }}
+            --project=${{ env.PROJECT_ID }} \
+            --service-account=manual-cloud-build-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com # <-- THIS IS THE FIX
 
       - name: Deploy pos-poller to Cloud Run
+        id: deploy-poller
         run: |
           gcloud run deploy pos-poller \
             --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.AR_REPO_NAME }}/pos-poller:${{ github.sha }} \
@@ -51,7 +52,11 @@ jobs:
             --set-secrets="API_BASE_URL=API_BASE_URL:latest,API_USERNAME_SECRET_ID=API_USERNAME_SECRET_ID:latest,API_PASSWORD_SECRET_ID=API_PASSWORD_SECRET_ID:latest"
 
       - name: Deploy pos-processor to Cloud Run
+        id: deploy-processor
         run: |
+          # The gcloud command prints the URL, but capturing it reliably can be tricky.
+          # The next step assumes this command's output can be read. A more robust
+          # solution is to use the dedicated 'google-github-actions/deploy-cloudrun' action.
           gcloud run deploy pos-processor \
             --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.AR_REPO_NAME }}/pos-processor:${{ github.sha }} \
             --service-account pos-processor-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
@@ -61,10 +66,18 @@ jobs:
             --set-secrets="BIGQUERY_DATASET_ID=BIGQUERY_DATASET_ID:latest"
 
       - name: Update Pub/Sub Subscription push endpoint
-        env:
-          PROCESSOR_URL: ${{ steps.deploy-processor.outputs.url }}
+        id: update-subscription
         run: |
+          # This step gets the URL of the 'pos-processor' service to update the subscription
+          PROCESSOR_URL=$(gcloud run services describe pos-processor \
+            --platform managed \
+            --region ${{ env.REGION }} \
+            --project ${{ env.PROJECT_ID }} \
+            --format="value(status.url)")
+          
+          echo "Updating Pub/Sub subscription to point to ${PROCESSOR_URL}"
+
           gcloud pubsub subscriptions update pos-processor-sub \
             --push-endpoint=${PROCESSOR_URL} \
             --push-auth-service-account=pos-processor-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
-            --project=${{ env.PROJECT_ID }}
+            --project ${{ env.PROJECT_ID }}
