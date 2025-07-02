@@ -25,11 +25,11 @@ resource "google_cloud_run_v2_service" "pos_processor_service" {
     service_account = google_service_account.pos_processor_sa.email
 
     containers {
-      # NOTE: The image URL is a placeholder. The CI/CD pipeline will build
-      # the actual image and push it to this location in Artifact Registry.
-      # We are defining the service here so Terraform can manage it and
-      # provide its URL to the Pub/Sub subscription.
-      image = "${var.region}-docker.pkg.dev/${var.gcp_project_id}/${google_artifact_registry_repository.pos_services_repo.repository_id}/pos-processor:latest"
+      # NOTE: Using a public placeholder image for initial setup.
+      # This allows Terraform to create the service successfully before our
+      # application image has been built. The CI/CD pipeline will replace
+      # this with the correct application image on the first deployment.
+      image = "us-docker.pkg.dev/cloudrun/container/hello"
 
       # Define environment variables needed by the application.
       # The processor needs to know the project and dataset ID.
@@ -61,8 +61,10 @@ resource "google_cloud_run_v2_service" "pos_poller_service" {
     service_account = google_service_account.pos_poller_sa.email
 
     containers {
-      # NOTE: Placeholder image URL. The CI/CD pipeline will build this.
-      image = "${var.region}-docker.pkg.dev/${var.gcp_project_id}/${google_artifact_registry_repository.pos_services_repo.repository_id}/pos-poller:latest"
+      # NOTE: Using a public placeholder image for initial setup.
+      # The CI/CD pipeline will replace this with the correct application
+      # image on the first deployment.
+      image = "us-docker.pkg.dev/cloudrun/container/hello"
 
       # Define environment variables needed by the application.
       # The poller needs to know the project and the topic to publish to.
@@ -96,14 +98,28 @@ resource "google_cloud_scheduler_job" "pos_poller_scheduler" {
   time_zone   = "UTC"
 
   http_target {
-    uri         = google_cloud_run_v2_service.pos_poller_service.uri
+    # Target the /sync endpoint to trigger the actual polling logic.
+    uri         = "${google_cloud_run_v2_service.pos_poller_service.uri}/sync"
     http_method = "POST"
+
+    # The body of the POST request, telling the poller what to do.
+    # This example syncs all endpoints for the last 7 days.
+    # The body must be base64-encoded for the Terraform resource.
+    body = base64encode(jsonencode({
+      "endpoints" : "all",
+      "days_back" : 7
+    }))
 
     oidc_token {
       # The scheduler needs to authenticate to invoke the Cloud Run service.
       # It will use the poller's service account to create an OIDC token.
       service_account_email = google_service_account.pos_poller_sa.email
       audience              = google_cloud_run_v2_service.pos_poller_service.uri
+    }
+
+    # Set the correct header for a JSON request body.
+    headers = {
+      "Content-Type" = "application/json"
     }
   }
 
