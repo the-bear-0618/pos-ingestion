@@ -1,4 +1,4 @@
-name: Build and Deploy to Cloud Run
+name: Build Container Images
 
 on:
   push:
@@ -10,8 +10,8 @@ env:
   AR_REPO_NAME: pos-ingestion-repo
 
 jobs:
-  deploy:
-    name: Build and Deploy
+  build-and-push:
+    name: Build and Push Container Images
     runs-on: ubuntu-latest
 
     permissions:
@@ -27,6 +27,7 @@ jobs:
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          # IMPORTANT: Make sure this secret contains your NEW service account email
           service_account: ${{ secrets.GCP_SA_EMAIL }}
 
       - name: Install gcloud CLI
@@ -38,43 +39,4 @@ jobs:
           gcloud builds submit --config cloudbuild.yaml \
             --substitutions=SHORT_SHA=${{ github.sha }} \
             --project=${{ env.PROJECT_ID }} \
-            --service-account=projects/${{ env.PROJECT_ID }}/serviceAccounts/manual-cloud-build-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com
-
-      - name: Deploy pos-poller to Cloud Run
-        id: deploy-poller
-        run: |
-          gcloud run deploy pos-poller \
-            --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.AR_REPO_NAME }}/pos-poller:${{ github.sha }} \
-            --service-account pos-poller-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
-            --region ${{ env.REGION }} \
-            --project ${{ env.PROJECT_ID }} \
-            --no-allow-unauthenticated \
-            --set-secrets="API_BASE_URL=API_BASE_URL:latest,API_USERNAME_SECRET_ID=API_USERNAME_SECRET_ID:latest,API_PASSWORD_SECRET_ID=API_PASSWORD_SECRET_ID:latest"
-
-      - name: Deploy pos-processor to Cloud Run
-        id: deploy-processor
-        run: |
-          gcloud run deploy pos-processor \
-            --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.AR_REPO_NAME }}/pos-processor:${{ github.sha }} \
-            --service-account pos-processor-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
-            --region ${{ env.REGION }} \
-            --project ${{ env.PROJECT_ID }} \
-            --no-allow-unauthenticated \
-            --set-secrets="BIGQUERY_DATASET_ID=BIGQUERY_DATASET_ID:latest"
-
-      - name: Update Pub/Sub Subscription push endpoint
-        id: update-subscription
-        run: |
-          # Actively query for the URL of the newly deployed pos-processor service
-          PROCESSOR_URL=$(gcloud run services describe pos-processor \
-            --platform managed \
-            --region ${{ env.REGION }} \
-            --project ${{ env.PROJECT_ID }} \
-            --format="value(status.url)")
-          
-          echo "Updating Pub/Sub subscription to point to ${PROCESSOR_URL}"
-
-          gcloud pubsub subscriptions update pos-processor-sub \
-            --push-endpoint=${PROCESSOR_URL} \
-            --push-auth-service-account=pos-processor-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
-            --project ${{ env.PROJECT_ID }}
+            --service-account=manual-cloud-build-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com
