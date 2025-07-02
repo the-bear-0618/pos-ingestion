@@ -32,6 +32,17 @@ resource "google_project_iam_member" "poller_can_access_secrets" {
   member  = google_service_account.pos_poller_sa.member
 }
 
+# Allow the Poller Service Account to invoke its own Cloud Run service.
+# This is required when using an OIDC token from the scheduler, as the service
+# checks if the identity in the token has permission to invoke it.
+resource "google_cloud_run_v2_service_iam_member" "poller_sa_can_invoke_poller_service" {
+  project  = google_cloud_run_v2_service.pos_poller_service.project
+  location = google_cloud_run_v2_service.pos_poller_service.location
+  name     = google_cloud_run_v2_service.pos_poller_service.name
+  role     = "roles/run.invoker"
+  member   = google_service_account.pos_poller_sa.member
+}
+
 # Service Account for the POS Processor Service
 resource "google_service_account" "pos_processor_sa" {
   project      = var.gcp_project_id
@@ -119,11 +130,24 @@ resource "google_project_iam_member" "deployer_can_write_to_storage" {
   member  = google_service_account.github_actions_deployer_sa.member
 }
 
-# Allow the Deployer to deploy and manage Cloud Run services.
-resource "google_project_iam_member" "deployer_can_admin_run" {
-  project = var.gcp_project_id
-  role    = "roles/run.admin"
-  member  = google_service_account.github_actions_deployer_sa.member
+# --- Permissions for the Deployer SA to manage specific Cloud Run services ---
+# Granting the "Cloud Run Developer" role on each service is more secure
+# than granting the broad "Cloud Run Admin" role on the entire project.
+
+resource "google_cloud_run_v2_service_iam_member" "deployer_can_develop_processor" {
+  project  = google_cloud_run_v2_service.pos_processor_service.project
+  location = google_cloud_run_v2_service.pos_processor_service.location
+  name     = google_cloud_run_v2_service.pos_processor_service.name
+  role     = "roles/run.developer"
+  member   = google_service_account.github_actions_deployer_sa.member
+}
+
+resource "google_cloud_run_v2_service_iam_member" "deployer_can_develop_poller" {
+  project  = google_cloud_run_v2_service.pos_poller_service.project
+  location = google_cloud_run_v2_service.pos_poller_service.location
+  name     = google_cloud_run_v2_service.pos_poller_service.name
+  role     = "roles/run.developer"
+  member   = google_service_account.github_actions_deployer_sa.member
 }
 
 # --- Permissions for the Cloud Build SA ---
