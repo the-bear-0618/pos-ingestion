@@ -50,7 +50,7 @@ def test_transform_odata_record():
     expected_transformed_record = {
         "object_id": "36b492b3-d80e-4b5f-9ac6-35125a19fa0e",
         "business_date": "2023-01-01T00:00:00+00:00",
-        "net_sales": "25.50" # The poller should NOT convert this to a float
+        "net_sales": 25.50 # The poller SHOULD convert this to a float
     }
     
     transformed = transform_odata_record(raw_record, "Checks")

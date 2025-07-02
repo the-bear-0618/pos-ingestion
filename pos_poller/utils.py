@@ -17,16 +17,12 @@ def parse_microsoft_date(date_str: str) -> Optional[str]:
 
 def to_snake_case(name: str) -> str:
     """
-    A definitive, simple function to convert complex PascalCase and
-    snake_case combinations into pure snake_case.
-    e.g., 'Account_ObjectId' -> 'account_object_id'
+    Converts a string from PascalCase or camelCase to snake_case,
+    correctly handling acronyms (e.g., 'AnID' -> 'an_id').
     """
-    # Add an underscore before any uppercase letter to break apart words
-    # e.g., 'UserSession' -> 'User_Session'
-    name = re.sub(r'(?<!^)(?=[A-Z])', '_', name)
-    # Now, replace any existing underscores with a space, then convert the whole
-    # string to lowercase and split it into a list of words.
-    # e.g., 'Account_Object_Id' -> 'account object id' -> ['account', 'object', 'id']
-    words = name.replace('_', ' ').lower().split()
-    # Join the words back together with a single underscore.
-    return '_'.join(words)
+    if not name:
+        return ""
+    # Insert underscores before uppercase letters, but not at the start.
+    s1 = re.sub(r'(.)([A-Z][a-z]+)', r'\1_\2', name)
+    # Handle cases like 'AmountUSD' -> 'Amount_USD'
+    return re.sub(r'([a-z0-9])([A-Z])', r'\1_\2', s1).lower()

@@ -11,6 +11,7 @@ from flask import Flask, request
 
 from google.cloud import bigquery
 from pos_processor.schema_validator import validate_message
+from pos_processor.config import NORMALIZATION_RULES
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -25,21 +26,6 @@ DATASET_ID = os.environ.get("BIGQUERY_DATASET_ID")
 def get_bigquery_client() -> bigquery.Client:
     """Returns a cached instance of the BigQuery client."""
     return bigquery.Client()
-
-# A map defining how to normalize fields for specific tables.
-# This provides a centralized and extensible way to handle data type transformations.
-NORMALIZATION_RULES = {
-    "pos_paidouts": {
-        "business_date": "DATE"
-    },
-    "pos_time_records": {
-        "business_date": "DATE",
-        "in_time": "DATETIME",
-        "out_time": "DATETIME",
-        "modified_on": "DATETIME"
-    }
-    # Add other table-specific rules here as needed.
-}
 
 def normalize_record(record: dict, table_name: str) -> dict:
     """
@@ -101,6 +87,12 @@ def _process_message(message_data: dict) -> tuple[str, int]:
     # Acknowledge the message successfully
     return "Success", 204
 
+def _decode_pubsub_message(envelope: dict) -> dict:
+    """Decodes the base64 data from a Pub/Sub message envelope."""
+    pubsub_message = envelope['message']
+    message_data_str = base64.b64decode(pubsub_message['data']).decode('utf-8')
+    return json.loads(message_data_str)
+
 @app.route('/', methods=['POST'])
 def handle_pubsub_message():
     """Endpoint to receive Pub/Sub push messages."""
@@ -110,11 +102,7 @@ def handle_pubsub_message():
         return "Bad Request: Invalid Pub/Sub message format", 400
 
     try:
-        # Decode the message data
-        pubsub_message = envelope['message']
-        message_data_str = base64.b64decode(pubsub_message['data']).decode('utf-8')
-        message_data = json.loads(message_data_str)
-        
+        message_data = _decode_pubsub_message(envelope)
         # Delegate processing to the helper function
         return _process_message(message_data)
 
