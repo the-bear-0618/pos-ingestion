@@ -135,6 +135,7 @@ def fetch_odata_page(url: str, params: dict) -> List[Dict[str, Any]]:
     headers = {'Authorization': f'AccessToken={API_ACCESS_TOKEN}', 'Accept': 'application/json'}
     req = requests.Request('GET', url, params=params, headers=headers)
     prepared = http_session.prepare_request(req)
+    logger.info(f"Requesting URL: {prepared.url}")
     response = http_session.send(prepared, timeout=API_TIMEOUT_SECONDS)
     response.raise_for_status()
     return response.json().get('d', [])
