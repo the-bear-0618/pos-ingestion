@@ -52,6 +52,39 @@ def health_check() -> Response:
         'timestamp': datetime.now(timezone.utc).isoformat()
     }), 200
 
+def _parse_and_validate_sync_request(request_data: dict) -> tuple[int, list, Response | None]:
+    """
+    Parses and validates the sync request payload.
+    Returns (days_back, endpoints_to_sync, optional_error_response).
+    """
+    try:
+        days_back = int(request_data.get('days_back', 7))
+        if not 1 <= days_back <= 365:
+            raise ValueError("days_back must be between 1 and 365.")
+    except (ValueError, TypeError):
+        logger.error(f"Invalid days_back value received: {request_data.get('days_back')}")
+        error_response = jsonify({'error': 'days_back must be an integer between 1 and 365'}), 400
+        return 0, [], error_response
+
+    endpoints_req = request_data.get('endpoints', 'all')
+    endpoints_to_sync = []
+
+    if endpoints_req == 'all':
+        endpoints_to_sync = sorted(list(ODATA_ENDPOINTS.keys()))
+    elif isinstance(endpoints_req, list):
+        valid_endpoints = set(ODATA_ENDPOINTS.keys())
+        requested_endpoints = set(endpoints_req)
+        endpoints_to_sync = sorted(list(valid_endpoints.intersection(requested_endpoints)))
+        invalid_endpoints = sorted(list(requested_endpoints.difference(valid_endpoints)))
+        if invalid_endpoints:
+            logger.warning(f"Ignoring invalid endpoints in request: {invalid_endpoints}")
+    else:
+        logger.error(f"Invalid 'endpoints' format received: {type(endpoints_req)}")
+        error_response = jsonify({'error': 'endpoints must be "all" or a list of strings'}), 400
+        return 0, [], error_response
+    
+    return days_back, endpoints_to_sync, None
+
 @app.route('/sync', methods=['POST'])
 def sync() -> Response:
     """
@@ -62,28 +95,9 @@ def sync() -> Response:
         request_data = request.get_json(silent=True) or {}
         logger.info(f"Sync request received. Payload: {json.dumps(request_data)}")
 
-        try:
-            days_back = int(request_data.get('days_back', 7))
-            if not 1 <= days_back <= 365:
-                raise ValueError("days_back must be between 1 and 365.")
-        except (ValueError, TypeError):
-            logger.error(f"Invalid days_back value received: {request_data.get('days_back')}")
-            return jsonify({'error': 'days_back must be an integer between 1 and 365'}), 400
-
-        endpoints_req = request_data.get('endpoints', 'all')
-
-        if endpoints_req == 'all':
-            endpoints_to_sync = sorted(list(ODATA_ENDPOINTS.keys()))
-        elif isinstance(endpoints_req, list):
-            valid_endpoints = set(ODATA_ENDPOINTS.keys())
-            requested_endpoints = set(endpoints_req)
-            endpoints_to_sync = sorted(list(valid_endpoints.intersection(requested_endpoints)))
-            invalid_endpoints = sorted(list(requested_endpoints.difference(valid_endpoints)))
-            if invalid_endpoints:
-                logger.warning(f"Ignoring invalid endpoints in request: {invalid_endpoints}")
-        else:
-            logger.error(f"Invalid 'endpoints' format received: {type(endpoints_req)}")
-            return jsonify({'error': 'endpoints must be "all" or a list of strings'}), 400
+        days_back, endpoints_to_sync, error_response = _parse_and_validate_sync_request(request_data)
+        if error_response:
+            return error_response
 
         if not endpoints_to_sync:
             logger.warning("Request resulted in no valid endpoints to sync.")
