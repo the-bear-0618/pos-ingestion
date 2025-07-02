@@ -1,22 +1,21 @@
-# --- Stage 1: Build Stage ---
-    FROM python:3.9-slim-bullseye AS builder
-    WORKDIR /app
-    RUN python -m venv /opt/venv
-    ENV PATH="/opt/venv/bin:$PATH"
-    RUN pip install --upgrade pip
-    COPY pos-processor/requirements.txt .
-    RUN pip install -r requirements.txt
-    COPY pos-processor/ /app/
-    COPY schemas/ /app/schemas/
-    
-    # --- Stage 2: Final Production Image ---
-    FROM python:3.9-slim-bullseye
-    WORKDIR /app
-    RUN useradd --system --no-create-home appuser
-    COPY --from=builder /opt/venv /opt/venv
-    COPY --from=builder /app .
-    ENV PATH="/opt/venv/bin:$PATH"
-    USER appuser
-    EXPOSE 8080
-    ENV PORT 8080
-    CMD gunicorn --bind 0.0.0.0:${PORT} --workers 2 --threads 4 main:app
+# Use an official Python runtime as a parent image
+FROM python:3.9-slim
+
+# Set the working directory in the container to /app
+WORKDIR /app
+
+# Copy the requirements file from the build context (./pos-processor) into the container
+COPY requirements.txt .
+
+# Install any needed packages specified in requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the rest of the application's code from the build context into the container
+COPY . .
+
+# Tell Cloud Run what port the application listens on
+ENV PORT 8080
+
+# Run main.py when the container launches.
+# Assumes your entry point script is named main.py.
+CMD ["python", "main.py"]
