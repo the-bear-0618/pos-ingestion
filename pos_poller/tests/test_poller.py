@@ -97,12 +97,16 @@ def test_sync_endpoint_with_pagination(mock_fetch, mock_publish):
     # Configure the mock fetch to simulate multiple pages.
     # The first time it's called, it returns a full page of records.
     # The second time, it returns a smaller page, indicating the end.
+    # The second time, it returns a smaller page, which signals the end of pagination.
     mock_fetch.side_effect = [
         ([{"Id": i} for i in range(1000)], True),  # Page 1 (full page)
         ([{"Id": i} for i in range(1000, 1050)], False) # Page 2 (partial page)
+        [{"Id": i} for i in range(1000)],      # Page 1 (full page)
+        [{"Id": i} for i in range(1000, 1050)]  # Page 2 (partial page)
     ]
     
     # --- Act ---
+
     sync_endpoint('ItemSales', days_back=0)
     
     # --- Assert ---

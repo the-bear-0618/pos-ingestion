@@ -6,7 +6,7 @@ on:
   push:
     branches: [ "main" ]
     paths:
-      - 'pos-processor/**'
+      - 'pos_processor/**'
       - '.github/workflows/deploy-processor.yml'
       - '.github/workflows/reusable-deploy.yml' # Also trigger if the reusable workflow changes
 
@@ -21,6 +21,6 @@ jobs:
       group: ${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: true
     with:
-      service_name: "pos-processor"
+      service_name: "pos_processor"
       service_specific_env_vars: "BIGQUERY_DATASET_ID=pos_data"
     secrets: inherit

@@ -12,16 +12,18 @@ FROM base as builder
 # Create a virtual environment to isolate dependencies
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
-COPY pos-poller/requirements.txt .
+COPY pos_processor/requirements.txt .
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
 # ---- Runtime Stage ----
 # This is the final, optimized image.
 FROM base as runtime
-# Copy the virtual environment and application code
+# Copy the virtual environment from the builder stage
 COPY --from=builder /opt/venv /opt/venv
-COPY pos-poller/. .
+# Copy the application code and shared schemas
+COPY pos_processor/. .
+COPY schemas ./schemas
 # Switch to the non-root user
 ENV PATH="/opt/venv/bin:$PATH"
 USER nonroot
