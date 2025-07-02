@@ -10,8 +10,8 @@ env:
   AR_REPO_NAME: pos-ingestion-repo
 
 jobs:
-  build-and-push:
-    name: Build and Push Container Images
+  build:
+    name: Build Container Images
     runs-on: ubuntu-latest
 
     permissions:
@@ -27,7 +27,7 @@ jobs:
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
-          # IMPORTANT: Make sure this secret contains your NEW service account email
+          # This should be your 'github-actions-deployer@...' service account
           service_account: ${{ secrets.GCP_SA_EMAIL }}
 
       - name: Install gcloud CLI
@@ -39,4 +39,4 @@ jobs:
           gcloud builds submit --config cloudbuild.yaml \
             --substitutions=SHORT_SHA=${{ github.sha }} \
             --project=${{ env.PROJECT_ID }} \
-            --service-account=manual-cloud-build-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com
+            --service-account=projects/${{ env.PROJECT_ID }}/serviceAccounts/manual-cloud-build-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com
