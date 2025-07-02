@@ -11,7 +11,7 @@ on:
     branches: [ "main" ]
     # Only trigger if there are changes in the processor's source code or this workflow file.
     paths:
-      - 'src/pos-processor/**'
+      - 'pos-processor/**'
       - '.github/workflows/deploy.yml'
 
 env:
@@ -52,7 +52,7 @@ jobs:
 
       - name: Build and Push container image with Cloud Build
         run: |-
-          gcloud builds submit src/pos-processor \
+          gcloud builds submit pos-processor \
             --tag "${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/${{ env.SERVICE_NAME }}:latest" \
             --service-account="${{ env.GCP_CLOUDBUILD_SA }}"
 
