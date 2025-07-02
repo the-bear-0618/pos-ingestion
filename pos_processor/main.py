@@ -11,6 +11,7 @@ from flask import Flask, request, Response
 
 from google.cloud import bigquery
 from pos_processor.schema_validator import validate_message
+from pos_processor.config import NORMALIZATION_RULES
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -24,21 +25,6 @@ DATASET_ID = os.environ.get("BIGQUERY_DATASET_ID")
 def get_bigquery_client() -> bigquery.Client:
     """Returns a cached instance of the BigQuery client."""
     return bigquery.Client()
-
-# A map defining how to normalize fields for specific tables.
-# This provides a centralized and extensible way to handle data type transformations.
-NORMALIZATION_RULES = {
-    "pos_paidouts": {
-        "business_date": "DATE"
-    },
-    "pos_time_records": {
-        "business_date": "DATE",
-        "in_time": "DATETIME",
-        "out_time": "DATETIME",
-        "modified_on": "DATETIME"
-    }
-    # Add other table-specific rules here as needed.
-}
 
 def normalize_record(record: dict, table_name: str) -> dict:
     """
@@ -60,6 +46,8 @@ def normalize_record(record: dict, table_name: str) -> dict:
             dt_object = datetime.fromisoformat(field_value.replace('Z', '+00:00'))
             if target_format == "DATE":
                 record[field] = dt_object.strftime('%Y-%m-%d')
+            elif target_format == "DATETIME":
+                record[field] = dt_object.isoformat(sep=' ')
         except (ValueError, TypeError):
             logger.warning(f"Could not parse timestamp for field '{field}' with value '{field_value}' in table '{table_name}'.")
     return record
