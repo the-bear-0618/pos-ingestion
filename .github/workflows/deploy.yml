@@ -54,7 +54,8 @@ jobs:
         run: |-
           gcloud builds submit pos-processor \
             --tag "${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/${{ env.SERVICE_NAME }}:latest" \
-            --service-account="${{ env.GCP_CLOUDBUILD_SA }}"
+            --service-account="${{ env.GCP_CLOUDBUILD_SA }}" \
+            --logging=CLOUD_LOGGING_ONLY
 
       - name: Deploy to Cloud Run
         run: |-
