@@ -42,8 +42,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install pytest -r ${{ inputs.service_name }}/requirements.txt
       - name: Run tests
-        run: pytest
-        working-directory: ${{ inputs.service_name }}
+        run: python -m pytest ${{ inputs.service_name }}/
 
   build-and-deploy:
     needs: test # Ensure tests pass before deploying

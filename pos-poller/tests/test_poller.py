@@ -1,10 +1,11 @@
 import pytest
 from unittest.mock import patch, MagicMock
 from datetime import datetime, timezone
+import requests
 
 # Import the functions we want to test
-from poller import transform_odata_record, sync_endpoint
-from utils import to_snake_case, parse_microsoft_date
+from pos_poller.poller import transform_odata_record, sync_endpoint
+from pos_poller.utils import to_snake_case, parse_microsoft_date
 
 # --- Unit Tests for Utility Functions ---
 
@@ -60,8 +61,8 @@ def test_transform_odata_record():
 
 # We use @patch to replace external dependencies with "Mocks".
 # The order is bottom-up, so the first function argument corresponds to the last patch.
-@patch('poller.publish_records')
-@patch('poller.fetch_odata_page')
+@patch('pos_poller.poller.publish_records')
+@patch('pos_poller.poller.fetch_odata_page')
 def test_sync_endpoint_single_page(mock_fetch, mock_publish):
     """
     Tests the sync_endpoint function for the simple case:
@@ -85,8 +86,8 @@ def test_sync_endpoint_single_page(mock_fetch, mock_publish):
     # Check that our mock publish function was called exactly once with the correct data.
     mock_publish.assert_called_once_with(sample_records, 'Checks', mock_publish.call_args[0][2]) # Arg 2 is the dynamic sync_id
 
-@patch('poller.publish_records')
-@patch('poller.fetch_odata_page')
+@patch('pos_poller.poller.publish_records')
+@patch('pos_poller.poller.fetch_odata_page')
 def test_sync_endpoint_with_pagination(mock_fetch, mock_publish):
     """
     Tests that the sync_endpoint correctly handles pagination
@@ -113,8 +114,8 @@ def test_sync_endpoint_with_pagination(mock_fetch, mock_publish):
     # Check that the second call to publish had the 50 records from the second page.
     assert len(mock_publish.call_args[0][0]) == 50
 
-@patch('poller.publish_records')
-@patch('poller.fetch_odata_page')
+@patch('pos_poller.poller.publish_records')
+@patch('pos_poller.poller.fetch_odata_page')
 def test_sync_endpoint_api_error(mock_fetch, mock_publish):
     """
     Tests that if the API call fails, the process handles it gracefully
