@@ -52,11 +52,13 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
+      - name: Configure Cloud Build logging
+        run: gcloud config set builds/logging CLOUD_LOGGING_ONLY
+
       - name: Build and Push container image
         run: |-
           gcloud builds submit pos-processor \
             --tag "${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/${{ env.SERVICE_NAME }}:latest" \
-            --logging=CLOUD_LOGGING_ONLY \
             --service-account="${{ env.GCP_CLOUDBUILD_SA }}"
 
       - name: Deploy to Cloud Run
