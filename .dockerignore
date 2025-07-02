@@ -1,0 +1,23 @@
+# .dockerignore
+
+# Git files
+.git
+.gitignore
+
+# GitHub Actions
+.github/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment folders
+.venv
+venv/
+env/
+
+# IDE / Editor specific files
+.idea/
+.vscode/
