@@ -122,5 +122,6 @@ def handle_pubsub_message():
         return "Internal Server Error", 500
 
 if __name__ == '__main__':
-    PORT = int(os.environ.get("PORT", 8080))
-    app.run(host="0.0.0.0", port=PORT)
+    port = int(os.environ.get('PORT', 8080))
+    is_debug = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
+    app.run(host='0.0.0.0', port=port, debug=is_debug)
