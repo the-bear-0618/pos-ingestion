@@ -24,7 +24,7 @@ env:
   ARTIFACT_REPO: "pos-services"
   SERVICE_NAME: "pos-processor"
   # The service account that Cloud Build will use to push to Artifact Registry.
-  GCP_CLOUDBUILD_SA: "manual-cloud-build-sa@${{ secrets.GCP_PROJECT_ID }}.iam.gserviceaccount.com"
+  GCP_CLOUDBUILD_SA: "projects/${{ secrets.GCP_PROJECT_ID }}/serviceAccounts/manual-cloud-build-sa@${{ secrets.GCP_PROJECT_ID }}.iam.gserviceaccount.com"
 
 jobs:
   build-and-deploy:
