@@ -19,5 +19,5 @@ jobs:
       cancel-in-progress: true
     with:
       service_name: "pos-processor"
-      service_env_vars: "GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }},BIGQUERY_DATASET_ID=pos_data"
-    secrets: inherit 
+      service_specific_env_vars: "BIGQUERY_DATASET_ID=pos_data"
+    secrets: inherit

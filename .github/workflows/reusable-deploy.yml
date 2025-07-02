@@ -8,8 +8,8 @@ on:
         description: 'The name of the Cloud Run service to deploy'
         required: true
         type: string
-      service_env_vars:
-        description: 'Environment variables for the Cloud Run service'
+      service_specific_env_vars:
+        description: 'Service-specific environment variables for the Cloud Run service'
         required: true
         type: string
     secrets:
@@ -23,12 +23,13 @@ on:
 env:
   GCP_REGION: "us-central1"
   ARTIFACT_REPO: "pos-services"
-  GCP_CLOUDBUILD_SA: "projects/${{ secrets.GCP_PROJECT_ID }}/serviceAccounts/manual-cloud-build-sa@${{ secrets.GCP_PROJECT_ID }}.iam.gserviceaccount.com"
 
 jobs:
   build-and-deploy:
     name: Build and Deploy ${{ inputs.service_name }}
     runs-on: ubuntu-latest
+    env:
+      GCP_CLOUDBUILD_SA: "projects/${{ secrets.GCP_PROJECT_ID }}/serviceAccounts/manual-cloud-build-sa@${{ secrets.GCP_PROJECT_ID }}.iam.gserviceaccount.com"
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -59,6 +60,6 @@ jobs:
         run: |-
           gcloud run deploy ${{ inputs.service_name }} \
             --image "${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/${{ inputs.service_name }}:${{ steps.sha.outputs.short_sha }}" \
-            --set-env-vars="${{ inputs.service_env_vars }}" \
+            --set-env-vars="GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }},${{ inputs.service_specific_env_vars }}" \
             --region ${{ env.GCP_REGION }} \
             --quiet
