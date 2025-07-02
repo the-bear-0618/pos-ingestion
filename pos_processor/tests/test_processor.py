@@ -30,9 +30,9 @@ def create_pubsub_envelope(data: dict) -> dict:
 
 # --- Test Cases ---
 
-@patch('pos_processor.main.bigquery_client')
-@patch('pos_processor.schema_validator.get_schema_store')
-def test_success_flow(mock_get_schema_store, mock_bq_client, client):
+@patch('pos_processor.main.get_bigquery_client')
+@patch('pos_processor.main.validate_message')
+def test_success_flow(mock_validate_message, mock_get_bq_client, client):
     """
     Tests the "happy path": a valid message is received, validated,
     and successfully passed to BigQuery for insertion.
@@ -58,14 +58,11 @@ def test_success_flow(mock_get_schema_store, mock_bq_client, client):
     }
     
     # Mock the BigQuery client to simulate a successful insertion (returns no errors)
+    mock_bq_client = mock_get_bq_client.return_value
     mock_bq_client.insert_rows_json.return_value = []
     
-    # Because we're not testing the validator itself here, we mock the schema store
-    # to avoid file I/O. For real tests, you might load the actual schemas.
-    # We just need to ensure our mock store contains the schema ID we expect.
-    mock_get_schema_store.return_value = {
-        "https://schemas.crownpointrestaurant.com/pos/checks_final.json": {}
-    }
+    # For this test, we assume schema validation passes.
+    mock_validate_message.return_value = (True, None)
 
     # Create the full Pub/Sub message envelope
     envelope = create_pubsub_envelope(valid_data)
@@ -85,8 +82,8 @@ def test_success_flow(mock_get_schema_store, mock_bq_client, client):
     assert "pos_checks" in call_args[0][0] # Check table name
     assert call_args[0][1] == [valid_data['data']] # Check row data
 
-@patch('pos_processor.main.bigquery_client')
-def test_schema_validation_failure(mock_bq_client, client):
+@patch('pos_processor.main.get_bigquery_client')
+def test_schema_validation_failure(mock_get_bq_client, client):
     """
     Tests the failure path: an invalid message is received.
     It should be acknowledged (to go to the DLQ) and NOT sent to BigQuery.
@@ -113,11 +110,11 @@ def test_schema_validation_failure(mock_bq_client, client):
     assert b"Validation failed" in response.data
     
     # CRUCIALLY, the BigQuery client should never be called.
-    mock_bq_client.insert_rows_json.assert_not_called()
+    mock_get_bq_client.return_value.insert_rows_json.assert_not_called()
 
-@patch('pos_processor.main.bigquery_client')
+@patch('pos_processor.main.get_bigquery_client')
 @patch('pos_processor.schema_validator.validate_message')
-def test_bigquery_insertion_failure(mock_validate_message, mock_bq_client, client):
+def test_bigquery_insertion_failure(mock_validate_message, mock_get_bq_client, client):
     """
     Tests the failure path: the message is valid, but the BigQuery API fails.
     The service should return a 5xx error to trigger a Pub/Sub retry.
@@ -131,6 +128,7 @@ def test_bigquery_insertion_failure(mock_validate_message, mock_bq_client, clien
     mock_validate_message.return_value = (True, None)
 
     # Mock the BigQuery client to simulate an insertion error.
+    mock_bq_client = mock_get_bq_client.return_value
     mock_bq_client.insert_rows_json.return_value = [{'errors': ['BigQuery is unavailable']}]
     
     # --- Act ---

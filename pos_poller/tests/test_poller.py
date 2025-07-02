@@ -61,9 +61,10 @@ def test_transform_odata_record():
 
 # We use @patch to replace external dependencies with "Mocks".
 # The order is bottom-up, so the first function argument corresponds to the last patch.
+@patch('pos_poller.poller.get_api_credentials')
 @patch('pos_poller.poller.publish_records')
 @patch('pos_poller.poller.fetch_odata_page')
-def test_sync_endpoint_single_page(mock_fetch, mock_publish):
+def test_sync_endpoint_single_page(mock_fetch, mock_publish, mock_get_creds):
     """
     Tests the sync_endpoint function for the simple case:
     - The API returns one page of data.
@@ -74,6 +75,7 @@ def test_sync_endpoint_single_page(mock_fetch, mock_publish):
     # When called, it will return a list with two records and indicate no more pages.
     sample_records = [{"Id": 1}, {"Id": 2}]
     mock_fetch.return_value = sample_records
+    mock_get_creds.return_value = ('dummy_site_id', 'dummy_token')
     
     # --- Act ---
     # Run the main sync function for a single endpoint.
@@ -86,9 +88,10 @@ def test_sync_endpoint_single_page(mock_fetch, mock_publish):
     # Check that our mock publish function was called exactly once with the correct data.
     mock_publish.assert_called_once_with(sample_records, 'Checks', mock_publish.call_args[0][2]) # Arg 2 is the dynamic sync_id
 
+@patch('pos_poller.poller.get_api_credentials')
 @patch('pos_poller.poller.publish_records')
 @patch('pos_poller.poller.fetch_odata_page')
-def test_sync_endpoint_with_pagination(mock_fetch, mock_publish):
+def test_sync_endpoint_with_pagination(mock_fetch, mock_publish, mock_get_creds):
     """
     Tests that the sync_endpoint correctly handles pagination
     when the API indicates more data is available.
@@ -101,6 +104,7 @@ def test_sync_endpoint_with_pagination(mock_fetch, mock_publish):
         [{"Id": i} for i in range(1000)],      # Page 1 (full page)
         [{"Id": i} for i in range(1000, 1050)]  # Page 2 (partial page)
     ]
+    mock_get_creds.return_value = ('dummy_site_id', 'dummy_token')
     
     # --- Act ---
 
@@ -115,9 +119,10 @@ def test_sync_endpoint_with_pagination(mock_fetch, mock_publish):
     # Check that the second call to publish had the 50 records from the second page.
     assert len(mock_publish.call_args[0][0]) == 50
 
+@patch('pos_poller.poller.get_api_credentials')
 @patch('pos_poller.poller.publish_records')
 @patch('pos_poller.poller.fetch_odata_page')
-def test_sync_endpoint_api_error(mock_fetch, mock_publish):
+def test_sync_endpoint_api_error(mock_fetch, mock_publish, mock_get_creds):
     """
     Tests that if the API call fails, the process handles it gracefully
     and does not attempt to publish any data.
@@ -125,6 +130,7 @@ def test_sync_endpoint_api_error(mock_fetch, mock_publish):
     # --- Arrange ---
     # Configure the mock fetch function to raise an exception when called.
     mock_fetch.side_effect = requests.exceptions.RequestException("API is down")
+    mock_get_creds.return_value = ('dummy_site_id', 'dummy_token')
     
     # --- Act ---
     # Run the sync function. The internal try/except should catch the error.

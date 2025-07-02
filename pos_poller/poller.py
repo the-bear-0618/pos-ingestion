@@ -22,9 +22,6 @@ API_TIMEOUT_SECONDS = 60
 MAX_RETRIES = 3
 BACKOFF_FACTOR = 1
 
-publisher = pubsub_v1.PublisherClient()
-secret_client = secretmanager.SecretManagerServiceClient()
-
 http_session = requests.Session()
 retries = Retry(total=MAX_RETRIES, backoff_factor=BACKOFF_FACTOR, status_forcelist=[500, 502, 503, 504])
 http_session.mount('https://', HTTPAdapter(max_retries=retries))
@@ -37,6 +34,16 @@ API_BASE_URL = os.environ.get("API_BASE_URL")
 IS_LOCAL_ENVIRONMENT = os.environ.get("PUBSUB_EMULATOR_HOST") is not None
 
 # --- Core Functions ---
+
+@lru_cache(maxsize=1)
+def get_publisher_client() -> pubsub_v1.PublisherClient:
+    """Returns a cached instance of the Pub/Sub PublisherClient."""
+    return pubsub_v1.PublisherClient()
+
+@lru_cache(maxsize=1)
+def get_secret_manager_client() -> secretmanager.SecretManagerServiceClient:
+    """Returns a cached instance of the SecretManagerServiceClient."""
+    return secretmanager.SecretManagerServiceClient()
 
 @lru_cache(maxsize=1)
 def get_api_credentials() -> Tuple[Optional[str], Optional[str]]:
@@ -55,6 +62,7 @@ def get_api_credentials() -> Tuple[Optional[str], Optional[str]]:
         def get_secret(secret_id: str, version: str = "latest") -> Optional[str]:
             if not secret_id:
                 return None
+            secret_client = get_secret_manager_client()
             try:
                 name = f"projects/{PROJECT_ID}/secrets/{secret_id}/versions/{version}"
                 response = secret_client.access_secret_version(request={"name": name})
@@ -119,6 +127,7 @@ def _create_pubsub_message_payload(record: dict, table_name: str, event_type: st
     }
 
 def publish_records(records: List[Dict[str, Any]], endpoint_name: str, sync_id: str):
+    publisher = get_publisher_client()
     topic_path = publisher.topic_path(PROJECT_ID, TOPIC_ID)
     table_name = ODATA_ENDPOINTS[endpoint_name]['table_name']
     event_type = f"pos.{table_name.replace('pos_', '')}"
@@ -129,7 +138,7 @@ def publish_records(records: List[Dict[str, Any]], endpoint_name: str, sync_id: 
             transformed_record, table_name, event_type, sync_id
         )
         message_bytes = json.dumps(message_payload).encode('utf-8')
-        future = publisher.publish(topic_path, message_bytes)
+        future = get_publisher_client().publish(topic_path, message_bytes)
         publish_futures.append(future)
     for future in publish_futures:
         future.result()

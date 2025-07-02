@@ -6,6 +6,7 @@ import json
 import base64
 import logging
 from datetime import datetime
+from functools import lru_cache
 from flask import Flask, request
 
 from google.cloud import bigquery
@@ -17,9 +18,13 @@ logger = logging.getLogger(__name__)
 
 # Initialize clients
 app = Flask(__name__)
-bigquery_client = bigquery.Client()
 PROJECT_ID = os.environ.get("GCP_PROJECT_ID")
 DATASET_ID = os.environ.get("BIGQUERY_DATASET_ID")
+
+@lru_cache(maxsize=1)
+def get_bigquery_client() -> bigquery.Client:
+    """Returns a cached instance of the BigQuery client."""
+    return bigquery.Client()
 
 # A map defining how to normalize fields for specific tables.
 # This provides a centralized and extensible way to handle data type transformations.
@@ -84,7 +89,8 @@ def _process_message(message_data: dict) -> tuple[str, int]:
     full_table_id = f"{PROJECT_ID}.{DATASET_ID}.{table_id}"
     
     # --- 3. Insert into BigQuery ---
-    errors = bigquery_client.insert_rows_json(full_table_id, rows_to_insert)
+    bq_client = get_bigquery_client()
+    errors = bq_client.insert_rows_json(full_table_id, rows_to_insert)
     
     if errors:
         logger.error(f"BigQuery insert errors for {full_table_id}: {errors}")
