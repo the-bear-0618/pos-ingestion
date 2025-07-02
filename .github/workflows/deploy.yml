@@ -1,41 +1,77 @@
-name: Build Container Images
+# .github/workflows/deploy.yml
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+name: Build and Deploy POS Processor
 
 on:
   push:
-    branches: [ main ]
+    branches: [ "main" ]
+    # Only trigger if there are changes in the processor's source code or this workflow file.
+    paths:
+      - 'src/pos-processor/**'
+      - '.github/workflows/deploy.yml'
 
 env:
-  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  REGION: us-central1
-  AR_REPO_NAME: pos-ingestion-repo
+  # These are defined as secrets in the GitHub repository settings.
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GCP_WIF_PROVIDER: ${{ secrets.GCP_WIF_PROVIDER }}
+  GCP_DEPLOYER_SA_EMAIL: ${{ secrets.GCP_DEPLOYER_SA_EMAIL }}
+  # These are non-secret environment variables.
+  GCP_REGION: "us-central1"
+  ARTIFACT_REPO: "pos-services"
+  SERVICE_NAME: "pos-processor"
+  # The service account that Cloud Build will use to push to Artifact Registry.
+  GCP_CLOUDBUILD_SA: "manual-cloud-build-sa@${{ secrets.GCP_PROJECT_ID }}.iam.gserviceaccount.com"
 
 jobs:
-  build-and-push:
-    name: Build and Push Container Images
+  build-and-deploy:
+    name: Build and Deploy
     runs-on: ubuntu-latest
 
+    # These permissions are required for Workload Identity Federation.
     permissions:
       contents: 'read'
       id-token: 'write'
 
     steps:
-      - name: Check out code
+      - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: 'Debug: Get OIDC Token'
+        id: get_oidc_token
+        uses: actions/github-script@v7
+        with:
+          result-encoding: string
+          script: |
+            return await core.getIDToken()
+
+      - name: 'Debug: Decode OIDC Token'
+        run: |
+          echo "DECODED OIDC TOKEN CLAIMS:"
+          echo "${{ steps.get_oidc_token.outputs.result }}" | cut -d. -f2 | base64 --decode | jq .
 
       - name: Authenticate to Google Cloud
         id: auth
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
-          service_account: ${{ secrets.GCP_SA_EMAIL }}
+          workload_identity_provider: ${{ env.GCP_WIF_PROVIDER }}
+          service_account: ${{ env.GCP_DEPLOYER_SA_EMAIL }}
 
-      - name: Install gcloud CLI
+      - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Build and Push Docker Images via Cloud Build
-        id: build
-        run: |
-          gcloud builds submit --config cloudbuild.yaml \
-            --substitutions=SHORT_SHA=${{ github.sha }},_AR_REPO_NAME=${{ env.AR_REPO_NAME }} \
-            --project=${{ env.PROJECT_ID }} \
-            --service-account=projects/${{ env.PROJECT_ID }}/serviceAccounts/manual-cloud-build-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com
+      - name: Build and Push container image with Cloud Build
+        run: |-
+          gcloud builds submit src/pos-processor \
+            --tag "${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/${{ env.SERVICE_NAME }}:latest" \
+            --service-account="${{ env.GCP_CLOUDBUILD_SA }}"
+
+      - name: Deploy to Cloud Run
+        run: |-
+          gcloud run deploy ${{ env.SERVICE_NAME }} \
+            --image "${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/${{ env.SERVICE_NAME }}:latest" \
+            --region ${{ env.GCP_REGION }} \
+            --quiet
