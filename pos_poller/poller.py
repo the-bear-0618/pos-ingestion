@@ -10,8 +10,8 @@ from typing import List, Dict, Any, Optional, Tuple
 from google.cloud import pubsub_v1, secretmanager
 import requests
 from requests.adapters import HTTPAdapter, Retry
-from config import ODATA_ENDPOINTS, NUMERIC_FIELDS
-from utils import parse_microsoft_date, to_snake_case
+from pos_poller.config import ODATA_ENDPOINTS, NUMERIC_FIELDS
+from pos_poller.utils import parse_microsoft_date, to_snake_case
 
 from functools import lru_cache
 logger = logging.getLogger(__name__)
@@ -71,32 +71,37 @@ def get_api_credentials() -> Tuple[Optional[str], Optional[str]]:
         
     return site_id, api_access_token
 
+def _convert_numeric_fields(record: Dict[str, Any]) -> Dict[str, Any]:
+    """Iterates through a record and converts known numeric fields from string to number."""
+    for key, value in record.items():
+        if key in NUMERIC_FIELDS and isinstance(value, str):
+            try:
+                if '.' in value:
+                    record[key] = float(value)
+                else:
+                    record[key] = int(value)
+            except (ValueError, TypeError):
+                logger.warning(f"Could not convert string '{value}' to a number for key '{key}'.")
+    return record
+
 def transform_odata_record(record: Dict[str, Any], entity_name: str) -> Dict[str, Any]:
     """
-    Transforms OData record with a master list of all numeric fields
-    that require string-to-number conversion.
+    Transforms an OData record by converting keys to snake_case, parsing date
+    formats, and converting numeric strings to numbers.
     """
+    record = _convert_numeric_fields(record)
     transformed = {}
     for key, value in record.items():
         if key.startswith('__') or (isinstance(value, dict) and '__deferred' in value):
             continue
         
-        if key in NUMERIC_FIELDS and isinstance(value, str):
-            try:
-                if '.' in value:
-                    value = float(value)
-                else:
-                    value = int(value)
-            except (ValueError, TypeError):
-                logger.warning(f"Could not convert string '{value}' to a number for key '{key}'.")
-        
         new_key = to_snake_case(key)
-        value = parse_microsoft_date(value)
+        new_value = parse_microsoft_date(value)
         
-        if value == "" or value == "null": 
-            value = None
+        if new_value == "" or new_value == "null": 
+            new_value = None
             
-        transformed[new_key] = value
+        transformed[new_key] = new_value
     
     return transformed
 
@@ -161,6 +166,37 @@ def _build_odata_params(endpoint_config: dict, site_id: str, target_date: Option
         
     return params
 
+def _sync_for_single_date(
+    url: str,
+    endpoint_name: str,
+    endpoint_config: dict,
+    site_id: str,
+    target_date: Optional[datetime],
+    sync_id: str,
+) -> int:
+    """Handles the pagination loop to fetch and publish records for a single date."""
+    if target_date:
+        logger.info(f"[{sync_id}] Processing date: {target_date.strftime('%Y-%m-%d')} (America/Chicago)")
+
+    records_for_date = 0
+    skip = 0
+    has_more = True
+    while has_more:
+        params = _build_odata_params(endpoint_config, site_id, target_date, skip)
+        try:
+            records = fetch_odata_page(url, params)
+            if records:
+                publish_records(records, endpoint_name, sync_id)
+                records_for_date += len(records)
+                skip += API_PAGE_SIZE
+                has_more = len(records) == API_PAGE_SIZE
+            else:
+                has_more = False
+        except Exception as e:
+            logger.error(f"[{sync_id}] Failed to process page for {endpoint_name}. Error: {e}")
+            break  # Stop processing this date if a page fails
+    return records_for_date
+
 def sync_endpoint(endpoint_name: str, days_back: int) -> int:
     """Syncs an endpoint using the detailed configuration to build the correct filter."""
     sync_id = f"{endpoint_name}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
@@ -186,25 +222,9 @@ def sync_endpoint(endpoint_name: str, days_back: int) -> int:
         date_range_to_process = [None] 
 
     for target_date in date_range_to_process:
-        if target_date:
-            logger.info(f"[{sync_id}] Processing date: {target_date.strftime('%Y-%m-%d')} (America/Chicago)")
-        
-        skip = 0
-        has_more = True
-        while has_more:
-            params = _build_odata_params(endpoint_config, site_id, target_date, skip)
-            try:
-                records = fetch_odata_page(url, params)
-                if records:
-                    publish_records(records, endpoint_name, sync_id)
-                    total_records += len(records)
-                    skip += API_PAGE_SIZE
-                    has_more = len(records) == API_PAGE_SIZE
-                else:
-                    has_more = False
-            except Exception as e:
-                logger.error(f"[{sync_id}] Failed to process page for {endpoint_name}. Error: {e}")
-                break
+        total_records += _sync_for_single_date(
+            url, endpoint_name, endpoint_config, site_id, target_date, sync_id
+        )
     
     logger.info(f"[{sync_id}] Completed sync for {endpoint_name}. Total records: {total_records}")
     return total_records

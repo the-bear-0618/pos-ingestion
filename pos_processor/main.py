@@ -9,7 +9,7 @@ from datetime import datetime
 from flask import Flask, request
 
 from google.cloud import bigquery
-from schema_validator import validate_message
+from pos_processor.schema_validator import validate_message
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')

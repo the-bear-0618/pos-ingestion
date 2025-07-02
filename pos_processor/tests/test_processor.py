@@ -4,7 +4,7 @@ import base64
 from unittest.mock import patch, MagicMock
 
 # Import the Flask app object from your main application file
-from main import app
+from pos_processor.main import app
 
 # --- Pytest Fixtures ---
 # Fixtures are reusable setup functions for your tests.
@@ -30,8 +30,8 @@ def create_pubsub_envelope(data: dict) -> dict:
 
 # --- Test Cases ---
 
-@patch('main.bigquery_client')
-@patch('schema_validator.get_schema_store')
+@patch('pos_processor.main.bigquery_client')
+@patch('pos_processor.schema_validator.get_schema_store')
 def test_success_flow(mock_get_schema_store, mock_bq_client, client):
     """
     Tests the "happy path": a valid message is received, validated,
@@ -85,7 +85,7 @@ def test_success_flow(mock_get_schema_store, mock_bq_client, client):
     assert "pos_checks" in call_args[0][0] # Check table name
     assert call_args[0][1] == [valid_data['data']] # Check row data
 
-@patch('main.bigquery_client')
+@patch('pos_processor.main.bigquery_client')
 def test_schema_validation_failure(mock_bq_client, client):
     """
     Tests the failure path: an invalid message is received.
@@ -115,8 +115,8 @@ def test_schema_validation_failure(mock_bq_client, client):
     # CRUCIALLY, the BigQuery client should never be called.
     mock_bq_client.insert_rows_json.assert_not_called()
 
-@patch('main.bigquery_client')
-@patch('schema_validator.validate_message')
+@patch('pos_processor.main.bigquery_client')
+@patch('pos_processor.schema_validator.validate_message')
 def test_bigquery_insertion_failure(mock_validate_message, mock_bq_client, client):
     """
     Tests the failure path: the message is valid, but the BigQuery API fails.

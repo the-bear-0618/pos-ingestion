@@ -9,8 +9,8 @@ from datetime import datetime, timezone
 from flask import Flask, request, jsonify, Response
 
 # Import the core logic from our new poller module
-from poller import sync_endpoint
-from config import ODATA_ENDPOINTS
+from pos_poller.poller import sync_endpoint
+from pos_poller.config import ODATA_ENDPOINTS
 
 # Initialize Flask app and logging
 app = Flask(__name__)
