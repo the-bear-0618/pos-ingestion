@@ -14,6 +14,9 @@ jobs:
   call-reusable-deploy:
     name: Deploy POS Processor
     uses: ./.github/workflows/reusable-deploy.yml
+    permissions:
+      contents: read # Required for the checkout action
+      id-token: write # Required for authenticating to Google Cloud
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: true
