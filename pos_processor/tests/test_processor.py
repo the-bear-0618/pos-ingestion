@@ -18,7 +18,7 @@ def client():
 def create_pubsub_envelope(data: dict) -> dict:
     """Helper function to create a mock Pub/Sub push message envelope."""
     # Encode the data payload to base64, as Pub/Sub does
-    message_data = base64.b64encode(json.dumps(data).encode('utf-8'))
+    message_data = base64.b64encode(json.dumps(data).encode('utf-8')).decode('utf-8')
     return {
         "message": {
             "data": message_data,
