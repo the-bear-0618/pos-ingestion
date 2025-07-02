@@ -72,7 +72,7 @@ resource "google_iam_workload_identity_pool_provider" "github_actions_provider" 
   description                        = "Trusts OIDC tokens from GitHub"
 
   # Restrict this provider to only accept tokens from a specific repository.
-  attribute_condition = "attribute.repository == 'KodiaQuery/pos-ingestion'"
+  attribute_condition = "attribute.repository == 'the-bear-0618/pos-ingestion'"
 
   oidc {
     issuer_uri = "https://token.actions.githubusercontent.com"
@@ -144,7 +144,7 @@ resource "google_service_account_iam_member" "wif_can_create_tokens_for_deployer
   role               = "roles/iam.serviceAccountTokenCreator"
   # Bind to principals from a specific repository, as filtered by the provider's condition.
   # This is more flexible than hardcoding a specific branch in the subject.
-  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github_actions_pool.name}/attribute.repository/KodiaQuery/pos-ingestion"
+  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github_actions_pool.name}/attribute.repository/the-bear-0618/pos-ingestion"
 
   # Explicitly depend on the pool and provider to avoid race conditions where
   # this resource is created before the pool is fully provisioned and recognized

@@ -40,19 +40,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: 'Debug: Get OIDC Token'
-        id: get_oidc_token
-        uses: actions/github-script@v7
-        with:
-          result-encoding: string
-          script: |
-            return await core.getIDToken()
-
-      - name: 'Debug: Decode OIDC Token'
-        run: |
-          echo "DECODED OIDC TOKEN CLAIMS:"
-          echo "${{ steps.get_oidc_token.outputs.result }}" | cut -d. -f2 | base64 --decode | jq .
-
       - name: Authenticate to Google Cloud
         id: auth
         uses: google-github-actions/auth@v2
