@@ -17,3 +17,31 @@ ODATA_ENDPOINTS = {
 # This can be phased out by setting APPLY_FIELD_TRANSFORMATIONS to False
 APPLY_FIELD_TRANSFORMATIONS = False
 FIELD_TRANSFORMATIONS = {}
+
+# A comprehensive set of all fields from all schemas that should be numeric.
+# Moving this to config makes it easier to manage without changing application logic.
+NUMERIC_FIELDS = {
+    'Id', 'PartyInfo_Id', 'CheckId', 'ItemSaleId', 'ItemExternalCode',
+    'AdjustedByUserExternalCode', 'AdjustmentReasonExternalCode', 'EmployeeNumber',
+    'EmployeeNumber2', 'JobNumber', 'ShiftNumber', 'LaborCategoryNumber',
+    'UnPaidBreakCounts', 'UnPaidBreakMinutes', 'ExternalCode', 'PaymentNumber',
+    'CheckNumber', 'DaypartExternalCode', 'RevenueCenterExternalCode', 'TenderType',
+    'TenderOption', 'TransactionType', 'PlacementLocationTag',
+    'CoverCount', 'GrossSales', 'NetSales', 'NonRevenueSales', 'Tax', 'Discounts',
+    'Comps', 'Surcharges', 'GrossAdjustments', 'NonGrossAdjustments', 'GiftCardsSold',
+    'DepositsReceived', 'DonationsReceived', 'CashCollected', 'CreditSalesCollected',
+    'CreditTipsCollected', 'AlternatePaymentsCollected', 'AlternateTipsCollected',
+    'MediaCollected', 'Paidouts', 'TaxCollected', 'TaxForgiven', 'TaxOwed',
+    'Gratuities', 'Voids', 'CheckGratuities', 'CheckTaxes', 'DepositSalesCollected',
+    'GiftCardSalesCollected', 'GiftCardTipsCollected',
+    'BasePrice', 'Price', 'ExtendedPrice', 'NetPrice', 'CompAmount',
+    'PromoAmount', 'TaxAmount', 'VoidAmount', 'SurchargeAmount',
+    'Quantity', 'AdjustmentAmount', 'Weight', 'TaxRate', 'AppliedAdjustmentAmount',
+    'ExtendedAppliedAdjustmentAmount', 'Rate', 'Amount', 'Forgiven',
+    'PaymentAmount', 'TotalAmount', 'TipAmount', 'AutoTipAmount', 'ChangeDue', 'TenderAmount',
+    'HoursWorked', 'HourlyRate', 'RegularPayRate', 'TotalHours',
+    'RegularHours', 'OvertimePayRate', 'OvertimeHours', 'OvertimeWages',
+    'DoubletimeHours', 'DoubletimeWages', 'CreditCardTips', 'DeclaredTips',
+    'Sales', 'RegularWages', 'TotalHoursUnrounded', 'RegularHoursUnrounded',
+    'OvertimeHoursUnrounded', 'DoubletimeHoursUnrounded'
+}

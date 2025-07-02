@@ -5,15 +5,15 @@ import hashlib
 import re
 from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 
 from google.cloud import pubsub_v1, secretmanager
 import requests
 from requests.adapters import HTTPAdapter, Retry
-
-from config import ODATA_ENDPOINTS
+from config import ODATA_ENDPOINTS, NUMERIC_FIELDS
 from utils import parse_microsoft_date, to_snake_case
 
+from functools import lru_cache
 logger = logging.getLogger(__name__)
 
 # --- Constants & Global Clients ---
@@ -36,57 +36,46 @@ API_BASE_URL = os.environ.get("API_BASE_URL")
 
 IS_LOCAL_ENVIRONMENT = os.environ.get("PUBSUB_EMULATOR_HOST") is not None
 
-if IS_LOCAL_ENVIRONMENT:
-    logger.info("Running in LOCAL environment, using secrets directly from .env file.")
-    SITE_ID = os.environ.get("SITE_ID")
-    API_ACCESS_TOKEN = os.environ.get("API_ACCESS_TOKEN")
-else:
-    logger.info("Running in CLOUD environment, fetching secrets from Secret Manager.")
-    SITE_ID_SECRET_ID = os.environ.get("SITE_ID_SECRET_ID")
-    API_ACCESS_TOKEN_SECRET_ID = os.environ.get("API_ACCESS_TOKEN_SECRET_ID")
-    
-    def get_secret(secret_id: str, version: str = "latest") -> str:
-        name = f"projects/{PROJECT_ID}/secrets/{secret_id}/versions/{version}"
-        response = secret_client.access_secret_version(request={"name": name})
-        return response.payload.data.decode("UTF-8")
-
-    SITE_ID = get_secret(SITE_ID_SECRET_ID) if SITE_ID_SECRET_ID else None
-    API_ACCESS_TOKEN = get_secret(API_ACCESS_TOKEN_SECRET_ID) if API_ACCESS_TOKEN_SECRET_ID else None
-
 # --- Core Functions ---
+
+@lru_cache(maxsize=1)
+def get_api_credentials() -> Tuple[Optional[str], Optional[str]]:
+    """
+    Fetches API credentials (Site ID and Access Token) either from environment
+    variables (for local development) or from Google Secret Manager.
+    This function is cached to prevent multiple lookups.
+    """
+    if IS_LOCAL_ENVIRONMENT:
+        logger.info("Running in LOCAL environment, using secrets directly from env.")
+        site_id = os.environ.get("SITE_ID")
+        api_access_token = os.environ.get("API_ACCESS_TOKEN")
+    else:
+        logger.info("Running in CLOUD environment, fetching secrets from Secret Manager.")
+        
+        def get_secret(secret_id: str, version: str = "latest") -> Optional[str]:
+            if not secret_id:
+                return None
+            try:
+                name = f"projects/{PROJECT_ID}/secrets/{secret_id}/versions/{version}"
+                response = secret_client.access_secret_version(request={"name": name})
+                return response.payload.data.decode("UTF-8")
+            except Exception as e:
+                logger.error(f"Failed to access secret '{secret_id}': {e}")
+                return None
+
+        site_id = get_secret(os.environ.get("SITE_ID_SECRET_ID"))
+        api_access_token = get_secret(os.environ.get("API_ACCESS_TOKEN_SECRET_ID"))
+
+    if not site_id or not api_access_token:
+        logger.critical("API credentials (Site ID or Access Token) could not be loaded. Service cannot function.")
+        
+    return site_id, api_access_token
 
 def transform_odata_record(record: Dict[str, Any], entity_name: str) -> Dict[str, Any]:
     """
     Transforms OData record with a master list of all numeric fields
     that require string-to-number conversion.
     """
-    # A comprehensive set of all fields from all schemas that should be numeric.
-    NUMERIC_FIELDS = {
-        'Id', 'PartyInfo_Id', 'CheckId', 'ItemSaleId', 'ItemExternalCode', 
-        'AdjustedByUserExternalCode', 'AdjustmentReasonExternalCode', 'EmployeeNumber', 
-        'EmployeeNumber2', 'JobNumber', 'ShiftNumber', 'LaborCategoryNumber',
-        'UnPaidBreakCounts', 'UnPaidBreakMinutes', 'ExternalCode', 'PaymentNumber', 
-        'CheckNumber', 'DaypartExternalCode', 'RevenueCenterExternalCode', 'TenderType', 
-        'TenderOption', 'TransactionType', 'PlacementLocationTag',
-        'CoverCount', 'GrossSales', 'NetSales', 'NonRevenueSales', 'Tax', 'Discounts', 
-        'Comps', 'Surcharges', 'GrossAdjustments', 'NonGrossAdjustments', 'GiftCardsSold', 
-        'DepositsReceived', 'DonationsReceived', 'CashCollected', 'CreditSalesCollected', 
-        'CreditTipsCollected', 'AlternatePaymentsCollected', 'AlternateTipsCollected', 
-        'MediaCollected', 'Paidouts', 'TaxCollected', 'TaxForgiven', 'TaxOwed', 
-        'Gratuities', 'Voids', 'CheckGratuities', 'CheckTaxes', 'DepositSalesCollected', 
-        'GiftCardSalesCollected', 'GiftCardTipsCollected',
-        'BasePrice', 'Price', 'ExtendedPrice', 'NetPrice', 'CompAmount', 
-        'PromoAmount', 'TaxAmount', 'VoidAmount', 'SurchargeAmount',
-        'Quantity', 'AdjustmentAmount', 'Weight', 'TaxRate', 'AppliedAdjustmentAmount',
-        'ExtendedAppliedAdjustmentAmount', 'Rate', 'Amount', 'Forgiven',
-        'PaymentAmount', 'TotalAmount', 'TipAmount', 'AutoTipAmount', 'ChangeDue', 'TenderAmount',
-        'HoursWorked', 'HourlyRate', 'RegularPayRate', 'TotalHours',
-        'RegularHours', 'OvertimePayRate', 'OvertimeHours', 'OvertimeWages',
-        'DoubletimeHours', 'DoubletimeWages', 'CreditCardTips', 'DeclaredTips',
-        'Sales', 'RegularWages', 'TotalHoursUnrounded', 'RegularHoursUnrounded',
-        'OvertimeHoursUnrounded', 'DoubletimeHoursUnrounded'
-    }
-
     transformed = {}
     for key, value in record.items():
         if key.startswith('__') or (isinstance(value, dict) and '__deferred' in value):
@@ -132,7 +121,11 @@ def publish_records(records: List[Dict[str, Any]], endpoint_name: str, sync_id: 
         future.result()
 
 def fetch_odata_page(url: str, params: dict) -> List[Dict[str, Any]]:
-    headers = {'Authorization': f'AccessToken={API_ACCESS_TOKEN}', 'Accept': 'application/json'}
+    _, api_access_token = get_api_credentials()
+    if not api_access_token:
+        raise ValueError("API Access Token is not available to make requests.")
+        
+    headers = {'Authorization': f'AccessToken={api_access_token}', 'Accept': 'application/json'}
     req = requests.Request('GET', url, params=params, headers=headers)
     prepared = http_session.prepare_request(req)
     logger.info(f"Requesting URL: {prepared.url}")
@@ -152,6 +145,7 @@ def sync_endpoint(endpoint_name: str, days_back: int) -> int:
         logger.error(f"No configuration found for endpoint '{endpoint_name}'. Skipping.")
         return 0
 
+    site_id, _ = get_api_credentials()
     url = f"{API_BASE_URL}/{endpoint_name}"
     total_records = 0
     
@@ -177,8 +171,8 @@ def sync_endpoint(endpoint_name: str, days_back: int) -> int:
                 day_start = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
                 filter_parts.append(f"{date_field} eq datetime'{day_start.strftime('%Y-%m-%dT00:00:00')}'")
             
-            if site_field and SITE_ID:
-                filter_parts.append(f"{site_field} eq guid'{SITE_ID}'")
+            if site_field and site_id:
+                filter_parts.append(f"{site_field} eq guid'{site_id}'")
 
             params = {'$top': API_PAGE_SIZE, '$skip': skip, '$orderby': 'Id', '$format': 'json'}
             if filter_parts:
