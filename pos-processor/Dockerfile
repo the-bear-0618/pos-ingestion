@@ -1,19 +1,30 @@
 # Use an official Python runtime as a parent image
-FROM python:3.9-slim
+# Using a specific, recent version is a good practice.
+FROM python:3.11-slim as base
 
 # Set the working directory in the container
 WORKDIR /app
 
-# Copy the requirements file from the subdirectory
-COPY pos-processor/requirements.txt .
+# Prevent python from writing .pyc files and buffer output
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+
+# Create a non-root user for security
+RUN addgroup --system nonroot && adduser --system --ingroup nonroot nonroot
+
+# Copy the requirements file. The path is now correct for the build context.
+COPY requirements.txt .
 
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application's code from the subdirectory
-COPY pos-processor/ .
+# Copy the rest of the application's code. The path is now correct.
+COPY . .
 
-# Tell Cloud Run what port the application listens on
+# Switch to the non-root user
+USER nonroot
+
+# Cloud Run provides the PORT env var. Gunicorn will use it.
 ENV PORT 8080
 
 # Use Gunicorn to start the Flask app defined as 'app' in 'main.py'

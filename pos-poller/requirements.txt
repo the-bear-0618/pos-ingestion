@@ -1,10 +1,10 @@
 # Web framework and production server
-Flask>=2.0
-gunicorn
+Flask==3.0.3
+gunicorn==22.0.0
 
 # Google Cloud client libraries
-google-cloud-pubsub>=2.5
-google-cloud-secret-manager>=2.5
+google-cloud-pubsub==2.21.0
+google-cloud-secret-manager==2.20.0
 
 # For making HTTP requests to the POS API
-requests>=2.25
+requests==2.32.3
