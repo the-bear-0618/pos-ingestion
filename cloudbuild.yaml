@@ -21,3 +21,7 @@ steps:
 images:
 - 'us-central1-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO_NAME}/pos-poller:${SHORT_SHA}'
 - 'us-central1-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO_NAME}/pos-processor:${SHORT_SHA}'
+
+# THIS IS THE FIX: Tell Cloud Build where to send logs
+options:
+  logging: CLOUD_LOGGING_ONLY

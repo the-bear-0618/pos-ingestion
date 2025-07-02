@@ -27,7 +27,6 @@ jobs:
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
-          # This should be your 'github-actions-deployer@...' service account
           service_account: ${{ secrets.GCP_SA_EMAIL }}
 
       - name: Install gcloud CLI
@@ -39,5 +38,4 @@ jobs:
           gcloud builds submit --config cloudbuild.yaml \
             --substitutions=SHORT_SHA=${{ github.sha }},_AR_REPO_NAME=${{ env.AR_REPO_NAME }} \
             --project=${{ env.PROJECT_ID }} \
-            --service-account=projects/${{ env.PROJECT_ID }}/serviceAccounts/manual-cloud-build-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
-            --logging=CLOUD_LOGGING_ONLY
+            --service-account=projects/${{ env.PROJECT_ID }}/serviceAccounts/manual-cloud-build-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com
