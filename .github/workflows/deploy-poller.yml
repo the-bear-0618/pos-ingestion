@@ -1,5 +1,4 @@
 # .github/workflows/deploy-poller.yml
-
 name: Build and Deploy POS Poller
 
 on:
@@ -9,56 +8,15 @@ on:
     paths:
       - 'pos-poller/**'
       - '.github/workflows/deploy-poller.yml'
-
-env:
-  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  GCP_WIF_PROVIDER: ${{ secrets.GCP_WIF_PROVIDER }}
-  GCP_DEPLOYER_SA_EMAIL: ${{ secrets.GCP_DEPLOYER_SA_EMAIL }}
-  GCP_REGION: "us-central1"
-  ARTIFACT_REPO: "pos-services"
-  SERVICE_NAME: "pos-poller"
-  GCP_CLOUDBUILD_SA: "projects/${{ secrets.GCP_PROJECT_ID }}/serviceAccounts/manual-cloud-build-sa@${{ secrets.GCP_PROJECT_ID }}.iam.gserviceaccount.com"
+      - '.github/workflows/reusable-deploy.yml' # Also trigger if the reusable workflow changes
 
 jobs:
-  build-and-deploy:
+  call-reusable-deploy:
+    name: Deploy POS Poller
+    uses: ./.github/workflows/reusable-deploy.yml
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: true
-    name: Build and Deploy Poller
-    runs-on: ubuntu-latest
-    permissions:
-      contents: 'read'
-      id-token: 'write'
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Get short SHA
-        id: sha
-        run: echo "short_sha=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
-
-      - name: Authenticate to Google Cloud
-        id: auth
-        uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: ${{ env.GCP_WIF_PROVIDER }}
-          service_account: ${{ env.GCP_DEPLOYER_SA_EMAIL }}
-
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
-
-      - name: Build and Push container images via Cloud Build
-        run: |-
-          gcloud builds submit . \
-            --config=cloudbuild.yaml \
-            --substitutions=_GCP_REGION=${{ env.GCP_REGION }},_AR_REPO_NAME=${{ env.ARTIFACT_REPO }},_TAG=${{ steps.sha.outputs.short_sha }},_SERVICE_NAME=${{ env.SERVICE_NAME }} \
-            --service-account="${{ env.GCP_CLOUDBUILD_SA }}"
-
-      - name: Deploy to Cloud Run
-        run: |-
-          gcloud run deploy ${{ env.SERVICE_NAME }} \
-            --image "${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/${{ env.SERVICE_NAME }}:${{ steps.sha.outputs.short_sha }}" \
-            --set-env-vars="GCP_PROJECT_ID=${{ env.GCP_PROJECT_ID }},TOPIC_ID=pos-events,API_BASE_URL=https://ecm-nsoeservices-bethpage.cbsnorthstar.com/reportservice/salesdata.svc,SITE_ID_SECRET_ID=pos-site-id,API_ACCESS_TOKEN_SECRET_ID=pos-api-access-token" \
-            --region ${{ env.GCP_REGION }} \
-            --quiet
+    with:
+      service_name: "pos-poller"
+      service_env_vars: "GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }},TOPIC_ID=pos-events,API_BASE_URL=https://ecm-nsoeservices-bethpage.cbsnorthstar.com/reportservice/salesdata.svc,SITE_ID_SECRET_ID=pos-site-id,API_ACCESS_TOKEN_SECRET_ID=pos-api-access-token"
