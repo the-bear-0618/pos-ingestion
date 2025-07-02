@@ -1,0 +1,14 @@
+# Set default behavior for all files to handle line endings automatically.
+# This ensures that on Windows, files are checked out with CRLF, and on
+# Mac/Linux, they are checked out with LF. On commit, they are all
+# normalized to LF in the repository.
+* text=auto
+
+# Explicitly declare file types that should always have LF line endings.
+# This is critical for files that might be run in a Linux environment
+# (like shell scripts or files used in Docker containers).
+*.sh      eol=lf
+*.tf      text eol=lf
+*.hcl     text eol=lf
+*.yaml    text eol=lf
+*.yml     text eol=lf
