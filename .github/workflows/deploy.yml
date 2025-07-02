@@ -50,12 +50,12 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Build and Push container image with Cloud Build
+      - name: Build and Push container images via Cloud Build
         run: |-
-          gcloud builds submit pos-processor \
-            --tag "${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/${{ env.SERVICE_NAME }}:latest" \
-            --service-account="${{ env.GCP_CLOUDBUILD_SA }}" \
-            --logging=CLOUD_LOGGING_ONLY
+          gcloud builds submit . \
+            --config=cloudbuild.yaml \
+            --substitutions=SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7),_AR_REPO_NAME=${{ env.ARTIFACT_REPO }} \
+            --service-account="${{ env.GCP_CLOUDBUILD_SA }}"
 
       - name: Deploy to Cloud Run
         run: |-
