@@ -41,25 +41,30 @@ def get_schema_store() -> dict:
     logger.info(f"SCHEMA STORE INITIALIZED. Contains IDs: {list(store.keys())}")
     return store
 
+def _find_schema_for_message(message: dict, schema_store: dict) -> Tuple[Optional[dict], Optional[str]]:
+    """Finds the appropriate schema for a message based on its event_type."""
+    event_type = message.get('event_type')
+    if not event_type:
+        return None, "Message missing 'event_type' field."
+
+    schema_name = f"https://schemas.crownpointrestaurant.com/pos/{event_type.replace('pos.', '')}.json"
+    logger.info(f"Attempting to validate against schema ID: {schema_name}")
+
+    main_schema = schema_store.get(schema_name)
+    if not main_schema:
+        return None, f"No schema found for event_type '{event_type}' (expected ID: {schema_name})"
+    
+    return main_schema, None
+
 def validate_message(message: dict) -> Tuple[bool, Optional[str]]:
     """
     Validates an incoming message against the appropriate JSON schema.
     """
     try:
-        event_type = message.get('event_type')
-        if not event_type:
-            return False, "Message missing 'event_type' field."
-
-        schema_name = f"https://schemas.crownpointrestaurant.com/pos/{event_type.replace('pos.', '')}.json"
-        
         schema_store = get_schema_store()
-        
-        logger.info(f"Attempting to validate against schema ID: {schema_name}")
-
-        if schema_name not in schema_store:
-            return False, f"No schema found for event_type '{event_type}' (expected ID: {schema_name})"
-
-        main_schema = schema_store[schema_name]
+        main_schema, error = _find_schema_for_message(message, schema_store)
+        if error:
+            return False, error
         
         # Create a registry of all known schemas, allowing for $ref resolution.
         registry = Registry().with_resources(
