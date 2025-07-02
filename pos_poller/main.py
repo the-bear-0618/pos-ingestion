@@ -18,30 +18,29 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 logger = logging.getLogger(__name__)
 # --- Configuration Validation on Startup ---
 # This will run once when the container starts to validate and log configuration.
-with app.app_context():
-    logger.info("--- VALIDATING CONFIGURATION ON STARTUP ---")
-    is_local = os.environ.get("PUBSUB_EMULATOR_HOST") is not None
+logger.info("--- VALIDATING CONFIGURATION ON STARTUP ---")
+is_local = os.environ.get("PUBSUB_EMULATOR_HOST") is not None
 
-    # Define required variables based on the environment
-    required_vars = ["GCP_PROJECT_ID", "TOPIC_ID", "API_BASE_URL"]
-    if is_local:
-        required_vars.extend(["SITE_ID", "API_ACCESS_TOKEN"])
+# Define required variables based on the environment
+required_vars = ["GCP_PROJECT_ID", "TOPIC_ID", "API_BASE_URL"]
+if is_local:
+    required_vars.extend(["SITE_ID", "API_ACCESS_TOKEN"])
+else:
+    required_vars.extend(["SITE_ID_SECRET_ID", "API_ACCESS_TOKEN_SECRET_ID"])
+
+# Check for the presence of each required variable and log its status
+all_vars_found = True
+for var in required_vars:
+    if var in os.environ:
+        logger.info(f"CONFIG: Found required environment variable '{var}'.")
     else:
-        required_vars.extend(["SITE_ID_SECRET_ID", "API_ACCESS_TOKEN_SECRET_ID"])
+        logger.error(f"CONFIG: MISSING required environment variable '{var}'.")
+        all_vars_found = False
 
-    # Check for the presence of each required variable and log its status
-    all_vars_found = True
-    for var in required_vars:
-        if var in os.environ:
-            logger.info(f"CONFIG: Found required environment variable '{var}'.")
-        else:
-            logger.error(f"CONFIG: MISSING required environment variable '{var}'.")
-            all_vars_found = False
-
-    if all_vars_found:
-        logger.info("--- CONFIGURATION VALIDATION SUCCESSFUL ---")
-    else:
-        logger.critical("--- CONFIGURATION VALIDATION FAILED: Missing one or more required environment variables. ---")
+if all_vars_found:
+    logger.info("--- CONFIGURATION VALIDATION SUCCESSFUL ---")
+else:
+    logger.critical("--- CONFIGURATION VALIDATION FAILED: Missing one or more required environment variables. ---")
 
 @app.route('/', methods=['GET'])
 def health_check() -> Response:

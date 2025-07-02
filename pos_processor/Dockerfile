@@ -22,12 +22,13 @@ FROM base as runtime
 # Copy the virtual environment from the builder stage
 COPY --from=builder /opt/venv /opt/venv
 # Copy the application code and shared schemas
-COPY pos_processor/. .
-COPY schemas ./schemas
+COPY pos_processor /app/pos_processor
+COPY schemas /app/pos_processor/schemas
 # Switch to the non-root user
 ENV PATH="/opt/venv/bin:$PATH"
+ENV PYTHONPATH /app
 USER nonroot
 # Cloud Run provides the PORT env var. Gunicorn will use it.
 ENV PORT 8080
 # Use Gunicorn to start the Flask app defined as 'app' in 'main.py'
-CMD exec gunicorn --bind :$PORT --workers 1 --threads 8 --timeout 0 main:app
+CMD exec gunicorn --bind :$PORT --workers 1 --threads 8 --timeout 0 pos_processor.main:app
