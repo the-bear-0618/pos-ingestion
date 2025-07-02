@@ -13,13 +13,13 @@ ENV PYTHONUNBUFFERED 1
 RUN addgroup --system nonroot && adduser --system --ingroup nonroot nonroot
 
 # Copy the requirements file. The path is now correct for the build context.
-COPY requirements.txt .
+COPY pos-poller/requirements.txt .
 
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application's code. The path is now correct.
-COPY . .
+# Copy the application's code into the container.
+COPY pos-poller/. .
 
 # Switch to the non-root user
 USER nonroot

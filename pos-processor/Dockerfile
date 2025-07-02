@@ -13,19 +13,14 @@ ENV PYTHONUNBUFFERED 1
 RUN addgroup --system nonroot && adduser --system --ingroup nonroot nonroot
 
 # Copy the requirements file. The path is now correct for the build context.
-COPY requirements.txt .
+COPY pos-processor/requirements.txt .
 
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy pos-processor code
-COPY pos-processor/ . 
-
-# Copy schemas directory from the project root into /app/schemas
+# Copy the application's code and shared schemas into the container.
+COPY pos-processor/. .
 COPY schemas ./schemas
-
-# Copy the rest of the application's code. The path is now correct.
-COPY . .
 
 # Switch to the non-root user
 USER nonroot
