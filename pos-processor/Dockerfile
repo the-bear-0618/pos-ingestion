@@ -18,6 +18,12 @@ COPY requirements.txt .
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Copy pos-processor code
+COPY pos-processor/ . 
+
+# Copy schemas directory from the project root into /app/schemas
+COPY schemas ./schemas
+
 # Copy the rest of the application's code. The path is now correct.
 COPY . .
 
