@@ -71,6 +71,10 @@ def sync() -> Response:
         for endpoint in endpoints_to_sync:
             try:
                 record_count = sync_endpoint(endpoint, days_back)
+                # --- ADDED: Log the successful sync for this endpoint ---
+                logger.info(
+                    f"Successfully processed endpoint '{endpoint}'. Published {record_count} records."
+                )
                 results[endpoint] = {'status': 'success', 'records_published': record_count}
             except Exception as e:
                 logger.error(f"Sync failed for endpoint '{endpoint}': {e}", exc_info=True)
