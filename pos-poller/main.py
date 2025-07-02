@@ -17,6 +17,19 @@ app = Flask(__name__)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+# --- ADD THIS DEBUGGING BLOCK ---
+# This will run once when the container starts and log the environment.
+with app.app_context():
+    logger.info("--- DUMPING ENVIRONMENT VARIABLES ON STARTUP ---")
+    # We check for sensitive parts in keys to avoid logging secrets.
+    sensitive_keys = ["SECRET", "TOKEN", "KEY"]
+    for key, value in os.environ.items():
+        if any(s in key for s in sensitive_keys):
+            logger.info(f"ENV: {key}=<hidden>")
+        else:
+            logger.info(f"ENV: {key}={value}")
+    logger.info("--- END OF ENVIRONMENT VARIABLES ---")
+
 @app.route('/', methods=['GET'])
 def health_check() -> Response:
     """A simple health check endpoint to confirm the service is running."""
