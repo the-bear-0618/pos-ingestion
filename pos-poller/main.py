@@ -1,4 +1,3 @@
-# pos-poller/main.py
 """
 Flask application entry point for the POS Poller service.
 Handles HTTP requests and delegates to the poller logic.
@@ -7,67 +6,68 @@ import os
 import json
 import logging
 from datetime import datetime, timezone
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response
 
-# Import the core logic from our poller module
+# Import the core logic from our new poller module
 from poller import sync_endpoint
 from config import ODATA_ENDPOINTS
 
-# --- THIS IS THE CRITICAL LOGGING SETUP ---
-# This simple configuration sends INFO level logs and above to standard output,
-# which is what Cloud Run automatically captures and displays in Log Explorer.
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+# Initialize Flask app and logging
+app = Flask(__name__)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Initialize Flask app
-app = Flask(__name__)
-
-
 @app.route('/', methods=['GET'])
-def health_check():
-    """Health check endpoint to confirm the service is up."""
-    logger.info("Health check endpoint was called.")
-    return jsonify({'status': 'healthy', 'service': 'pos-poller'}), 200
-
+def health_check() -> Response:
+    """A simple health check endpoint to confirm the service is running."""
+    return jsonify({
+        'status': 'healthy',
+        'service': 'pos-poller',
+        'timestamp': datetime.now(timezone.utc).isoformat()
+    }), 200
 
 @app.route('/sync', methods=['POST'])
-def sync():
-    """Main sync endpoint, now with enhanced logging."""
+def sync() -> Response:
+    """
+    Main sync endpoint. Accepts a JSON payload to trigger a sync for
+    specific endpoints and a given number of days.
+    """
     try:
-        # Use silent=True to prevent crashes if the body isn't JSON
         request_data = request.get_json(silent=True) or {}
-
-        # --- THIS IS THE NEW DEBUGGING LOG LINE ---
-        # It will show us exactly what payload the service receives.
         logger.info(f"Sync request received. Payload: {json.dumps(request_data)}")
 
-        days_back = int(request_data.get('days_back', 7))
-        endpoints_req = request_data.get('endpoints', 'all')
-        
-        if not 1 <= days_back <= 365:
-            logger.error(f"Invalid days_back value received: {days_back}")
+        try:
+            days_back = int(request_data.get('days_back', 7))
+            if not 1 <= days_back <= 365:
+                raise ValueError("days_back must be between 1 and 365.")
+        except (ValueError, TypeError):
+            logger.error(f"Invalid days_back value received: {request_data.get('days_back')}")
             return jsonify({'error': 'days_back must be an integer between 1 and 365'}), 400
-            
+
+        endpoints_req = request_data.get('endpoints', 'all')
+
         if endpoints_req == 'all':
-            endpoints_to_sync = list(ODATA_ENDPOINTS.keys())
+            endpoints_to_sync = sorted(list(ODATA_ENDPOINTS.keys()))
         elif isinstance(endpoints_req, list):
-            # Filter the requested list against our known endpoints
-            endpoints_to_sync = [ep for ep in endpoints_req if ep in ODATA_ENDPOINTS]
-            if len(endpoints_to_sync) != len(endpoints_req):
-                 logger.warning(f"Some requested endpoints were invalid. Original: {endpoints_req}, Validated: {endpoints_to_sync}")
+            valid_endpoints = set(ODATA_ENDPOINTS.keys())
+            requested_endpoints = set(endpoints_req)
+            endpoints_to_sync = sorted(list(valid_endpoints.intersection(requested_endpoints)))
+            invalid_endpoints = sorted(list(requested_endpoints.difference(valid_endpoints)))
+            if invalid_endpoints:
+                logger.warning(f"Ignoring invalid endpoints in request: {invalid_endpoints}")
         else:
             logger.error(f"Invalid 'endpoints' format received: {type(endpoints_req)}")
             return jsonify({'error': 'endpoints must be "all" or a list of strings'}), 400
-        
+
+        if not endpoints_to_sync:
+            logger.warning("Request resulted in no valid endpoints to sync.")
+            return jsonify({'status': 'completed', 'message': 'No valid endpoints were provided to sync.'}), 200
+
         logger.info(f"Validated endpoints to sync: {endpoints_to_sync}")
-        
+
         results = {}
         errors = []
-        
-        # This part remains the same, calling your core logic
+
         for endpoint in endpoints_to_sync:
             try:
                 record_count = sync_endpoint(endpoint, days_back)
@@ -76,13 +76,13 @@ def sync():
                 logger.error(f"Sync failed for endpoint '{endpoint}': {e}", exc_info=True)
                 results[endpoint] = {'status': 'error', 'message': str(e)}
                 errors.append(endpoint)
-        
+
         status_code = 200 if not errors else 207
         summary = {
             'status': 'completed' if not errors else 'completed_with_errors',
             'results': results,
             'summary': {
-                'total_requested': len(endpoints_to_sync),
+                'total_valid_endpoints': len(endpoints_to_sync),
                 'successful': len(endpoints_to_sync) - len(errors),
                 'failed': len(errors)
             },
@@ -90,13 +90,12 @@ def sync():
         }
         logger.info(f"Sync process finished. Summary: {json.dumps(summary)}")
         return jsonify(summary), status_code
-        
+
     except Exception as e:
         logger.error("A critical error occurred in the sync endpoint.", exc_info=True)
         return jsonify({'error': 'An unexpected server error occurred.', 'message': str(e)}), 500
 
-
 if __name__ == '__main__':
-    # Gunicorn is used for production, but this allows direct execution for local testing
     port = int(os.environ.get('PORT', 8080))
-    app.run(host='0.0.0.0', port=port, debug=True)
+    is_debug = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
+    app.run(host='0.0.0.0', port=port, debug=is_debug)
