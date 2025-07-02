@@ -1,0 +1,29 @@
+# cloudbuild.yaml
+
+steps:
+  # Step 1: Build the pos-processor container image
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-processor'
+    args:
+      - 'build'
+      - '-t'
+      - '${_GCP_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO_NAME}/pos-processor:latest'
+      - './pos-processor'
+
+  # Step 2: Build the pos-poller container image
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-poller'
+    args:
+      - 'build'
+      - '-t'
+      - '${_GCP_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO_NAME}/pos-poller:latest'
+      - './pos-poller'
+
+# Push all the built images to Artifact Registry
+images:
+  - '${_GCP_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO_NAME}/pos-processor:latest'
+  - '${_GCP_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO_NAME}/pos-poller:latest'
+
+# Define build options, including the logging configuration
+options:
+  logging: CLOUD_LOGGING_ONLY

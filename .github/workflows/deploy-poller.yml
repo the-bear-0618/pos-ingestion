@@ -44,13 +44,11 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Configure Cloud Build logging
-        run: gcloud config set builds/logging CLOUD_LOGGING_ONLY
-
-      - name: Build and Push container image
+      - name: Build and Push container images via Cloud Build
         run: |-
-          gcloud builds submit pos-poller \
-            --tag "${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/${{ env.SERVICE_NAME }}:latest" \
+          gcloud builds submit . \
+            --config=cloudbuild.yaml \
+            --substitutions=_GCP_REGION=${{ env.GCP_REGION }},_AR_REPO_NAME=${{ env.ARTIFACT_REPO }} \
             --service-account="${{ env.GCP_CLOUDBUILD_SA }}"
 
       - name: Deploy to Cloud Run
