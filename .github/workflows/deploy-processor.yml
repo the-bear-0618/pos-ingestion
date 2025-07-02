@@ -21,6 +21,7 @@ jobs:
       group: ${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: true
     with:
-      service_name: "pos_processor"
+      service_name: "pos-processor"
+      service_dir: "pos_processor"
       service_specific_env_vars: "BIGQUERY_DATASET_ID=pos_data"
     secrets: inherit

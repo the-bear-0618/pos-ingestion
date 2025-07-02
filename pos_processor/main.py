@@ -51,6 +51,17 @@ def normalize_record(record: dict, table_name: str) -> dict:
             logger.warning(f"Could not parse timestamp for field '{field}' with value '{field_value}' in table '{table_name}'.")
     return record
 
+def _insert_into_bigquery(table_id: str, rows: list) -> list:
+    """
+    Inserts rows into the specified BigQuery table and returns a list of any errors.
+    """
+    full_table_id = f"{PROJECT_ID}.{DATASET_ID}.{table_id}"
+    bq_client = get_bigquery_client()
+    errors = bq_client.insert_rows_json(full_table_id, rows)
+    if not errors:
+        logger.info(f"Successfully inserted {len(rows)} record(s) into {full_table_id}")
+    return errors
+
 def _process_message(message_data: dict) -> tuple[str, int]:
     """
     Handles the core logic of processing a single decoded Pub/Sub message.
@@ -75,15 +86,11 @@ def _process_message(message_data: dict) -> tuple[str, int]:
     full_table_id = f"{PROJECT_ID}.{DATASET_ID}.{table_id}"
     
     # --- 3. Insert into BigQuery ---
-    bq_client = get_bigquery_client()
-    errors = bq_client.insert_rows_json(full_table_id, rows_to_insert)
-    
+    errors = _insert_into_bigquery(table_id, rows_to_insert)
     if errors:
-        logger.error(f"BigQuery insert errors for {full_table_id}: {errors}")
-        # Return a server error to trigger a Pub/Sub retry
+        logger.error(f"BigQuery insert failed for {full_table_id}: {errors}")
         return "BigQuery insert failed", 500
 
-    logger.info(f"Successfully inserted 1 record into {full_table_id}")
     # Acknowledge the message successfully
     return "Success", 204
 

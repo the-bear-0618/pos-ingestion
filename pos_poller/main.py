@@ -85,6 +85,22 @@ def _parse_and_validate_sync_request(request_data: dict) -> tuple[int, list, Res
     
     return days_back, endpoints_to_sync, None
 
+def _build_sync_summary(results: dict, endpoints_to_sync: list, errors: list) -> tuple[dict, int]:
+    """Builds the final summary response for the sync operation."""
+    status_code = 200 if not errors else 207
+    summary = {
+        'status': 'completed' if not errors else 'completed_with_errors',
+        'results': results,
+        'summary': {
+            'total_valid_endpoints': len(endpoints_to_sync),
+            'successful': len(endpoints_to_sync) - len(errors),
+            'failed': len(errors)
+        },
+        'completed_at': datetime.now(timezone.utc).isoformat()
+    }
+    logger.info(f"Sync process finished. Summary: {json.dumps(summary)}")
+    return summary, status_code
+
 @app.route('/sync', methods=['POST'])
 def sync() -> Response:
     """
@@ -121,18 +137,7 @@ def sync() -> Response:
                 results[endpoint] = {'status': 'error', 'message': str(e)}
                 errors.append(endpoint)
 
-        status_code = 200 if not errors else 207
-        summary = {
-            'status': 'completed' if not errors else 'completed_with_errors',
-            'results': results,
-            'summary': {
-                'total_valid_endpoints': len(endpoints_to_sync),
-                'successful': len(endpoints_to_sync) - len(errors),
-                'failed': len(errors)
-            },
-            'completed_at': datetime.now(timezone.utc).isoformat()
-        }
-        logger.info(f"Sync process finished. Summary: {json.dumps(summary)}")
+        summary, status_code = _build_sync_summary(results, endpoints_to_sync, errors)
         return jsonify(summary), status_code
 
     except Exception as e:

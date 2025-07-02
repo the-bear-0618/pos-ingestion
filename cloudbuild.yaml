@@ -9,7 +9,7 @@ steps:
       - '-t'
       - '${_GCP_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO_NAME}/${_SERVICE_NAME}:${_TAG}'
       - '-f'
-      - '${_SERVICE_NAME}/Dockerfile'
+      - '${_SERVICE_DIR}/Dockerfile'
       - '.'
 
 # Push the built image to Artifact Registry
