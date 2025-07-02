@@ -10,8 +10,8 @@ env:
   AR_REPO_NAME: pos-ingestion-repo
 
 jobs:
-  build:
-    name: Build Container Images
+  build-and-push:
+    name: Build and Push Container Images
     runs-on: ubuntu-latest
 
     permissions:
@@ -37,6 +37,6 @@ jobs:
         id: build
         run: |
           gcloud builds submit --config cloudbuild.yaml \
-            --substitutions=SHORT_SHA=${{ github.sha }} \
+            --substitutions=SHORT_SHA=${{ github.sha }},_AR_REPO_NAME=${{ env.AR_REPO_NAME }} \
             --project=${{ env.PROJECT_ID }} \
             --service-account=projects/${{ env.PROJECT_ID }}/serviceAccounts/manual-cloud-build-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com
