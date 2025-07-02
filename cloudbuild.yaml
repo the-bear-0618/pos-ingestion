@@ -1,11 +1,20 @@
 steps:
+# --- START: DIAGNOSTIC STEP ---
+# This step will list all files recursively so we can see the exact build context.
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  id: 'List All Files'
+  entrypoint: 'bash'
+  args: ['-c', 'echo "--- File structure in build context ---" && ls -R']
+# --- END: DIAGNOSTIC STEP ---
+
+
 # Step 1: Build the pos-poller image
 - name: 'gcr.io/cloud-builders/docker'
   args: [
     'build',
     '-t',
     'us-central1-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO_NAME}/pos-poller:${SHORT_SHA}',
-    './pos-poller'
+    '-f', 'pos-poller/Dockerfile', '.'
   ]
 
 # Step 2: Build the pos-processor image
@@ -14,14 +23,14 @@ steps:
     'build',
     '-t',
     'us-central1-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO_NAME}/pos-processor:${SHORT_SHA}',
-    './pos-processor'
+    '-f', 'pos-processor/Dockerfile', '.'
   ]
 
-# After the steps are complete, list the images that were built.
+# List of images to push
 images:
 - 'us-central1-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO_NAME}/pos-poller:${SHORT_SHA}'
 - 'us-central1-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO_NAME}/pos-processor:${SHORT_SHA}'
 
-# THIS IS THE FIX: Tell Cloud Build where to send logs
+# Logging option
 options:
   logging: CLOUD_LOGGING_ONLY
