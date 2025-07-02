@@ -6,30 +6,25 @@ import json
 import logging
 from functools import lru_cache
 from typing import Optional, Tuple
-from jsonschema import validate, RefResolver, ValidationError
+from jsonschema import Draft202012Validator, ValidationError
+from referencing import Registry, Resource
 
 logger = logging.getLogger(__name__)
 
 @lru_cache(maxsize=1)
-def get_schema_store() -> Tuple[dict, str]:
+def get_schema_store() -> dict:
     """
     Loads all JSON schemas from the 'schemas' directory into a store.
     """
     store = {}
-    
-    # --- THIS IS THE FIX ---
-    # The path now correctly points directly to the 'schemas' directory, without 'v1'.
     schema_dir_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'schemas'))
-    base_uri = f'file://{schema_dir_path}/'
-    
     logger.info(f"Attempting to load schemas from absolute path: {schema_dir_path}")
-    
     try:
         filenames = os.listdir(schema_dir_path)
         logger.info(f"Found files in schema directory: {filenames}")
     except FileNotFoundError:
         logger.error(f"FATAL: Schema directory not found at {schema_dir_path}")
-        return {}, base_uri
+        return {}
 
     for filename in filenames:
         if filename.endswith('.json'):
@@ -44,8 +39,7 @@ def get_schema_store() -> Tuple[dict, str]:
                 logger.error(f"Failed to load or parse schema file {filename}: {e}")
     
     logger.info(f"SCHEMA STORE INITIALIZED. Contains IDs: {list(store.keys())}")
-    
-    return store, base_uri
+    return store
 
 def validate_message(message: dict) -> Tuple[bool, Optional[str]]:
     """
@@ -58,22 +52,28 @@ def validate_message(message: dict) -> Tuple[bool, Optional[str]]:
 
         schema_name = f"https://schemas.crownpointrestaurant.com/pos/{event_type.replace('pos.', '')}.json"
         
-        schema_store, base_uri = get_schema_store()
+        schema_store = get_schema_store()
         
         logger.info(f"Attempting to validate against schema ID: {schema_name}")
 
         if schema_name not in schema_store:
             return False, f"No schema found for event_type '{event_type}' (expected ID: {schema_name})"
 
-        schema_to_validate = schema_store[schema_name]
+        main_schema = schema_store[schema_name]
         
-        resolver = RefResolver(base_uri=base_uri, referrer=schema_to_validate, store=schema_store)
+        # Create a registry of all known schemas, allowing for $ref resolution.
+        registry = Registry().with_resources(
+            (resource["$id"], Resource.from_contents(resource))
+            for resource in schema_store.values()
+        )
         
-        validate(instance=message, schema=schema_to_validate, resolver=resolver)
-        
-        return True, None
+        validator = Draft202012Validator(main_schema, registry=registry)
+        errors = sorted(validator.iter_errors(message), key=lambda e: e.path)
 
-    except ValidationError as e:
+        if not errors:
+            return True, None
+
+        e = errors[0]
         error_path = "->".join(map(str, e.path)) if e.path else "root"
         error_message = f"Validation Error at '{error_path}': {e.message}"
         logger.warning(error_message)
