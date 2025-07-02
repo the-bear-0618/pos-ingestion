@@ -1,0 +1,10 @@
+[33maf30822[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m fix(ci): Make processor workflow self-contained
+[33mdceeb0b[m fix(ci): Correct build step for processor workflow
+[33m99edad6[m refactor(ci): Simplify to self-contained workflows per service
+[33mcd1402d[m fix(ci): Correct substitution variables for cloudbuild.yaml
+[33mf93f644[m refactor(ci): Move processor env vars from Terraform to workflow
+[33mcc9ffa2[m refactor(ci): Move processor env vars from Terraform to workflow
+[33m3011a03[m fix(ci): Correct gcloud syntax for setting multiple env vars
+[33m0551d44[m refactor(ci): Move poller env vars from Terraform to workflow
+[33mc035437[m feat(poller): Add environment variable logging for debugging
+[33m6d5fe84[m feat(poller): Add detailed logging for API request URLs
