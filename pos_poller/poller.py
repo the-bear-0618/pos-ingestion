@@ -100,6 +100,19 @@ def transform_odata_record(record: Dict[str, Any], entity_name: str) -> Dict[str
     
     return transformed
 
+def _create_pubsub_message_payload(record: dict, table_name: str, event_type: str, sync_id: str) -> dict:
+    """Constructs the standardized message payload for Pub/Sub."""
+    record_key = str(record.get('object_id') or record.get('id'))
+    record_hash = hashlib.md5(record_key.encode()).hexdigest()[:12]
+    return {
+        'record_id': record_hash,
+        'sync_id': sync_id,
+        'event_type': event_type,
+        'table_name': table_name,
+        'data': record,
+        'processed_at': datetime.now(timezone.utc).isoformat()
+    }
+
 def publish_records(records: List[Dict[str, Any]], endpoint_name: str, sync_id: str):
     topic_path = publisher.topic_path(PROJECT_ID, TOPIC_ID)
     table_name = ODATA_ENDPOINTS[endpoint_name]['table_name']
@@ -107,13 +120,9 @@ def publish_records(records: List[Dict[str, Any]], endpoint_name: str, sync_id: 
     publish_futures = []
     for record in records:
         transformed_record = transform_odata_record(record, endpoint_name)
-        record_key = str(transformed_record.get('object_id') or transformed_record.get('id'))
-        record_hash = hashlib.md5(record_key.encode()).hexdigest()[:12]
-        message_payload = {
-            'record_id': record_hash, 'sync_id': sync_id, 'event_type': event_type,
-            'table_name': table_name, 'data': transformed_record,
-            'processed_at': datetime.now(timezone.utc).isoformat()
-        }
+        message_payload = _create_pubsub_message_payload(
+            transformed_record, table_name, event_type, sync_id
+        )
         message_bytes = json.dumps(message_payload).encode('utf-8')
         future = publisher.publish(topic_path, message_bytes)
         publish_futures.append(future)
@@ -132,6 +141,25 @@ def fetch_odata_page(url: str, params: dict) -> List[Dict[str, Any]]:
     response = http_session.send(prepared, timeout=API_TIMEOUT_SECONDS)
     response.raise_for_status()
     return response.json().get('d', [])
+
+def _build_odata_params(endpoint_config: dict, site_id: str, target_date: Optional[datetime], skip: int) -> dict:
+    """Builds the OData query parameters for a given request."""
+    params = {'$top': API_PAGE_SIZE, '$skip': skip, '$orderby': 'Id', '$format': 'json'}
+    filter_parts = []
+    
+    date_field = endpoint_config.get('date_field')
+    if date_field and target_date:
+        day_start = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
+        filter_parts.append(f"{date_field} eq datetime'{day_start.strftime('%Y-%m-%dT00:00:00')}'")
+    
+    site_field = endpoint_config.get('site_field')
+    if site_field and site_id:
+        filter_parts.append(f"{site_field} eq guid'{site_id}'")
+    
+    if filter_parts:
+        params['$filter'] = " and ".join(filter_parts)
+        
+    return params
 
 def sync_endpoint(endpoint_name: str, days_back: int) -> int:
     """Syncs an endpoint using the detailed configuration to build the correct filter."""
@@ -164,20 +192,7 @@ def sync_endpoint(endpoint_name: str, days_back: int) -> int:
         skip = 0
         has_more = True
         while has_more:
-            filter_parts = []
-            site_field = endpoint_config.get('site_field')
-
-            if date_field and target_date:
-                day_start = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
-                filter_parts.append(f"{date_field} eq datetime'{day_start.strftime('%Y-%m-%dT00:00:00')}'")
-            
-            if site_field and site_id:
-                filter_parts.append(f"{site_field} eq guid'{site_id}'")
-
-            params = {'$top': API_PAGE_SIZE, '$skip': skip, '$orderby': 'Id', '$format': 'json'}
-            if filter_parts:
-                params['$filter'] = " and ".join(filter_parts)
-
+            params = _build_odata_params(endpoint_config, site_id, target_date, skip)
             try:
                 records = fetch_odata_page(url, params)
                 if records:
