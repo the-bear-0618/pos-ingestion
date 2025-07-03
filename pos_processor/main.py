@@ -111,8 +111,8 @@ def _process_message(message_data: dict) -> Response:
 
     if errors:
         logger.error(f"BigQuery insert failed for table {table_id}: {errors}")
-        # TEMPORARILY acknowledge to prevent retry loop while debugging
-        return Response("Insert failed but acknowledged", status=200)
+        # Return a server error to trigger a Pub/Sub retry
+        return Response("BigQuery insert failed", status=500)
 
     logger.info(f"Successfully inserted {len(rows_to_insert)} record(s) into table {table_id} (sync_id={message_data.get('sync_id')})")
     
