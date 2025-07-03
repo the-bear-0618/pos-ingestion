@@ -1,35 +1,40 @@
 steps:
-# --- START: DIAGNOSTIC STEP ---
-# This step will list all files recursively so we can see the exact build context.
-- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-  id: 'List All Files'
-  entrypoint: 'bash'
-  args: ['-c', 'echo "--- File structure in build context ---" && ls -R']
-# --- END: DIAGNOSTIC STEP ---
-
-
 # Step 1: Build the pos-poller image
 - name: 'gcr.io/cloud-builders/docker'
+  id: 'Build pos-poller'
   args: [
     'build',
     '-t',
     'us-central1-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO_NAME}/pos-poller:${SHORT_SHA}',
-    '-f', 'pos-poller/Dockerfile', '.'
+    '-t',
+    'us-central1-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO_NAME}/pos-poller:latest',
+    '--cache-from',
+    'us-central1-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO_NAME}/pos-poller:latest',
+    '-f', 'pos-poller/Dockerfile', '.',
   ]
+  waitFor: ['-'] # Start immediately, do not wait for prior steps
 
 # Step 2: Build the pos-processor image
 - name: 'gcr.io/cloud-builders/docker'
+  id: 'Build pos-processor'
   args: [
     'build',
     '-t',
     'us-central1-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO_NAME}/pos-processor:${SHORT_SHA}',
-    '-f', 'pos-processor/Dockerfile', '.'
+    '-t',
+    'us-central1-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO_NAME}/pos-processor:latest',
+    '--cache-from',
+    'us-central1-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO_NAME}/pos-processor:latest',
+    '-f', 'pos-processor/Dockerfile', '.',
   ]
+  waitFor: ['-'] # Start immediately, do not wait for prior steps
 
 # List of images to push
 images:
 - 'us-central1-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO_NAME}/pos-poller:${SHORT_SHA}'
+- 'us-central1-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO_NAME}/pos-poller:latest'
 - 'us-central1-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO_NAME}/pos-processor:${SHORT_SHA}'
+- 'us-central1-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO_NAME}/pos-processor:latest'
 
 # Logging option
 options:

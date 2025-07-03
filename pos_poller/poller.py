@@ -228,6 +228,9 @@ def _sync_for_single_date(
         except Exception as e:
             logger.error(f"[{sync_id}] Failed to process page for {endpoint_name}. Error: {e}")
             break  # Stop processing this date if a page fails
+            
+    if records_for_date == 0 and target_date:
+        logger.info(f"[{sync_id}] Endpoint '{endpoint_name}' returned 0 records for date {target_date.strftime('%Y-%m-%d')}.")
     return records_for_date
 
 def _get_date_range_for_sync(endpoint_config: dict, days_back: int) -> List[Optional[datetime]]:
