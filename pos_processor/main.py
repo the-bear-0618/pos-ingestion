@@ -81,20 +81,39 @@ def _process_message(message_data: dict) -> Response:
     # --- 1. Schema Validation ---
     is_valid, error = validate_message(message_data)
     if not is_valid:
-        logger.error(f"Schema validation failed for record_id {message_data.get('record_id')}: {error}")
-        # Acknowledge the message to send it to the DLQ
-        return Response(f"Validation failed: {error}", status=200)
+        record_id = message_data.get('record_id', 'N/A')
+        table_name = message_data.get('table_name', 'N/A')
+        error_log_data = {
+            "message": "Schema validation failed",
+            "record_id": record_id,
+            "table_name": table_name,
+            "validation_error": json.loads(error) if error.startswith('{') else error,
+            "record_data": message_data.get('data')
+        }
+        logger.error(json.dumps(error_log_data, indent=2))
+        # Acknowledge the message to prevent retries for invalid data.
+        return Response(f"Validation failed for record_id {record_id}", status=200)
 
     # --- 2. Prepare for BigQuery Insertion ---
     table_id, rows_to_insert = _prepare_record_for_insertion(message_data)
     
-    # --- 3. Insert into BigQuery ---
-    errors = _insert_into_bigquery(table_id, rows_to_insert)
-    if errors:
-        logger.error(f"BigQuery insert failed for {table_id}: {errors}")
-        # Return a server error to trigger a Pub/Sub retry
-        return Response("BigQuery insert failed", status=500)
+    # --- 3. Optional Dry-Run Mode for safe testing ---
+    if os.getenv("BQ_DRY_RUN", "false").lower() == "true":
+        logger.info(f"[DRY-RUN] Would insert to {table_id}: {json.dumps(rows_to_insert)}")
+        return Response(status=204)
 
+    # --- 3. Insert into BigQuery ---
+    logger.info(f"Attempting BigQuery insert to table {table_id} for sync_id={message_data.get('sync_id')} and record_id={message_data.get('record_id')}")
+
+    errors = _insert_into_bigquery(table_id, rows_to_insert)
+
+    if errors:
+        logger.error(f"BigQuery insert failed for table {table_id}: {errors}")
+        # TEMPORARILY acknowledge to prevent retry loop while debugging
+        return Response("Insert failed but acknowledged", status=200)
+
+    logger.info(f"Successfully inserted {len(rows_to_insert)} record(s) into table {table_id} (sync_id={message_data.get('sync_id')})")
+    
     # Acknowledge the message successfully
     return Response(status=204)
 
