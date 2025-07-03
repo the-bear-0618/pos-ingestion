@@ -154,3 +154,33 @@ def test_malformed_pubsub_envelope(client):
     # --- Assert ---
     # A 400 Bad Request should be returned.
     assert response.status_code == 400
+
+@patch('pos_processor.main.get_bigquery_client')
+def test_unknown_event_type_is_acknowledged(mock_get_bq_client, client):
+    """
+    Tests that a message with an unrecognized 'event_type' is gracefully
+    handled and acknowledged (status 200) to prevent retries, allowing it
+    to be sent to the DLQ.
+    """
+    # --- Arrange ---
+    # This data has an event_type that does not match any known schema.
+    data_with_unknown_event = {
+        "record_id": "f0f0f0f0f0f0",
+        "sync_id": "Unknown_20250630_120000",
+        "event_type": "pos.unknown_event", # This is the key part
+        "table_name": "pos_unknown",
+        "processed_at": "2025-06-30T12:00:00Z",
+        "data": { "field": "value" }
+    }
+    envelope = create_pubsub_envelope(data_with_unknown_event)
+
+    # --- Act ---
+    response = client.post('/', json=envelope)
+
+    # --- Assert ---
+    # A 200 OK response acknowledges the message, preventing retries.
+    assert response.status_code == 200
+    assert b"Validation failed" in response.data
+    
+    # The BigQuery client should NOT be called for this unprocessable message.
+    mock_get_bq_client.return_value.insert_rows_json.assert_not_called()
