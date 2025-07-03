@@ -162,6 +162,8 @@ def publish_records(records: List[Dict[str, Any]], endpoint_name: str, sync_id: 
         message_payload = _create_pubsub_message_payload(
             transformed_record, table_name, event_type, sync_id
         )
+        # --- DEBUG: Log the exact payload being sent ---
+        logger.info(f"PUBLISHING_PAYLOAD: {json.dumps(message_payload)}")
         message_bytes = json.dumps(message_payload).encode('utf-8')
         future = get_publisher_client().publish(topic_path, message_bytes)
         publish_futures.append(future)
