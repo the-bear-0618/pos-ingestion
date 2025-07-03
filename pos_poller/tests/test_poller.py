@@ -57,7 +57,9 @@ def test_parse_microsoft_date(input_date, expected_output_contains):
                 "ItemSale_Id": 456
             },
             {
-                "id": 123
+                "id": 123,
+                "site_object_id": "guid-here",
+                "item_sale_id": 456
             },
             "filter_nav_properties"
         ),

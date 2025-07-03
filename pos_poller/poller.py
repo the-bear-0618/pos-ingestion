@@ -94,14 +94,13 @@ def _convert_numeric_fields(record: Dict[str, Any]) -> Dict[str, Any]:
 
 def _should_filter_field(key: str, value: Any) -> bool:
     """Determines if a field should be filtered out during transformation."""
-    # 1. Filter out internal OData metadata fields.
+    # 1. Filter out internal OData metadata fields and navigation properties.
     if key.startswith('__') or (isinstance(value, dict) and '__deferred' in value):
         return True
     
-    # 2. Filter navigation properties (e.g., Site_ObjectId, ItemSale_Id) but keep the primary 'Id'.
-    lower_key = key.lower()
-    if (lower_key.endswith('_objectid') or lower_key.endswith('_id')) and lower_key != 'id':
-        return True
+    # 2. NOTE: A previous, aggressive name-based filter for fields ending in '_id' or
+    #    '_objectid' was removed. It was incorrectly stripping essential foreign key fields
+    #    (like Site_ObjectId) from the records, causing downstream validation failures.
         
     # 3. Filter specific problematic fields that have type mismatches.
     if key in ('DeviceId', 'AreaId'):
