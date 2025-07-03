@@ -57,12 +57,21 @@ def _parse_and_validate_sync_request(request_data: dict) -> tuple[int, list, Res
     Returns (days_back, endpoints_to_sync, optional_error_response).
     """
     try:
-        days_back = int(request_data.get('days_back', 7))
-        if not 1 <= days_back <= 365:
-            raise ValueError("days_back must be between 1 and 365.")
+        # Priority for setting days_back:
+        # 1. Value from the request payload.
+        # 2. Value from the DEFAULT_DAYS_BACK environment variable.
+        # 3. A hardcoded default of 7.
+        if 'days_back' in request_data:
+            days_back = int(request_data['days_back'])
+        else:
+            days_back = int(os.environ.get('DEFAULT_DAYS_BACK', '7'))
+
+        if not 0 <= days_back <= 365:
+            raise ValueError("days_back must be between 0 and 365.")
     except (ValueError, TypeError):
-        logger.error(f"Invalid days_back value received: {request_data.get('days_back')}")
-        error_response = jsonify({'error': 'days_back must be an integer between 1 and 365'}), 400
+        invalid_value = request_data.get('days_back') if 'days_back' in request_data else os.environ.get('DEFAULT_DAYS_BACK')
+        logger.error(f"Invalid days_back value received: {invalid_value}")
+        error_response = jsonify({'error': 'days_back must be an integer between 0 and 365'}), 400
         return 0, [], error_response
 
     endpoints_req = request_data.get('endpoints', 'all')
