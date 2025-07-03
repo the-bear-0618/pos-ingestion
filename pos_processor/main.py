@@ -52,6 +52,16 @@ def normalize_record(record: dict, table_name: str) -> dict:
             logger.warning(f"Could not parse timestamp for field '{field}' with value '{field_value}' in table '{table_name}'.")
     return record
 
+def _prepare_record_for_insertion(message_data: dict) -> tuple[str, list]:
+    """Prepares a record for BigQuery insertion by normalizing it."""
+    table_id = message_data['table_name']
+    record_to_insert = message_data['data']
+    
+    # Normalize the record based on predefined rules
+    normalized_record = normalize_record(record_to_insert, table_id)
+    
+    return table_id, [normalized_record]
+
 def _process_message(message_data: dict) -> Response:
     """
     Handles the core logic of processing a single decoded Pub/Sub message.
@@ -65,18 +75,11 @@ def _process_message(message_data: dict) -> Response:
         return Response(f"Validation failed: {error}", status=200)
 
     # --- 2. Prepare for BigQuery Insertion ---
-    table_id = message_data['table_name']
-    record_to_insert = message_data['data']
-    
-    # Normalize the record based on predefined rules
-    record_to_insert = normalize_record(record_to_insert, table_id)
-    
-    # BigQuery expects a list of rows
-    rows_to_insert = [record_to_insert]
-    full_table_id = f"{PROJECT_ID}.{DATASET_ID}.{table_id}"
+    table_id, rows_to_insert = _prepare_record_for_insertion(message_data)
     
     # --- 3. Insert into BigQuery ---
     bq_client = get_bigquery_client()
+    full_table_id = f"{PROJECT_ID}.{DATASET_ID}.{table_id}"
     errors = bq_client.insert_rows_json(full_table_id, rows_to_insert)
     if errors:
         logger.error(f"BigQuery insert errors for {full_table_id}: {errors}")
