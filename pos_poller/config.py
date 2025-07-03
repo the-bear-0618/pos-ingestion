@@ -18,6 +18,10 @@ ODATA_ENDPOINTS = {
 APPLY_FIELD_TRANSFORMATIONS = False
 FIELD_TRANSFORMATIONS = {}
 
+# A set of fields that are expected to be strings in the target schema.
+# This is used to enforce type conversion for fields that might be sent as numbers.
+STRING_FIELDS = {'AreaExternalCode'}
+
 # A comprehensive set of all fields from all schemas that should be numeric.
 # Moving this to config makes it easier to manage without changing application logic.
 NUMERIC_FIELDS = {

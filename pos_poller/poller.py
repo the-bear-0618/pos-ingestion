@@ -10,7 +10,7 @@ from typing import List, Dict, Any, Optional, Tuple
 from google.cloud import pubsub_v1, secretmanager
 import requests
 from requests.adapters import HTTPAdapter, Retry
-from pos_poller.config import ODATA_ENDPOINTS, NUMERIC_FIELDS
+from pos_poller.config import ODATA_ENDPOINTS, NUMERIC_FIELDS, STRING_FIELDS
 from pos_poller.utils import parse_microsoft_date, to_snake_case
 
 from functools import lru_cache
@@ -94,29 +94,40 @@ def _convert_numeric_fields(record: Dict[str, Any]) -> Dict[str, Any]:
 
 def transform_odata_record(record: Dict[str, Any], entity_name: str) -> Dict[str, Any]:
     """
-    Transforms an OData record by converting keys to snake_case, parsing date
-    formats, and converting numeric strings to numbers.
+    Transforms an OData record by filtering unwanted fields, converting keys to
+    snake_case, and normalizing data types for schema compliance.
     """
+    # First, convert numeric strings to numbers. This is done on raw keys.
     record = _convert_numeric_fields(record)
+    
     transformed = {}
     for key, value in record.items():
+        # 1. Filter out internal OData fields and navigation properties.
         if key.startswith('__') or (isinstance(value, dict) and '__deferred' in value):
             continue
         
-        # --- FIX: Ignore expanded navigation properties from OData ---
-        # These often end in '_ObjectId' and are not part of our target schemas.
-        if key.endswith('_ObjectId'):
+        # Filter navigation properties (e.g., Site_ObjectId, ItemSale_Id) but keep the primary 'Id'.
+        if (key.endswith('_ObjectId') or key.endswith('_Id')) and key != 'Id':
             continue
-        
-        # --- FIX: Ignore DeviceId due to type mismatch with schema ---
-        # The API sends a UUID string, but the schema expects an integer.
+            
+        # Filter specific problematic fields.
         if key == 'DeviceId':
             continue
-        
+
+        # 2. Convert key to snake_case.
         new_key = to_snake_case(key)
-        new_value = parse_microsoft_date(value)
         
-        if new_value == "" or new_value == "null": 
+        # 3. Parse Microsoft's date format.
+        new_value = parse_microsoft_date(value)
+
+        # 4. Enforce data types based on schema expectations.
+        if key in STRING_FIELDS and new_value is not None:
+            new_value = str(new_value)
+        
+        if key in NUMERIC_FIELDS and new_value is None:
+            new_value = 0.0
+        
+        if new_value == "" or new_value == "null":
             new_value = None
             
         transformed[new_key] = new_value
