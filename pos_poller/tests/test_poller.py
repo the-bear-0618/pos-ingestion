@@ -33,29 +33,53 @@ def test_parse_microsoft_date(input_date, expected_output_contains):
 
 # --- Unit Test for Transformation Logic ---
 
-def test_transform_odata_record():
+@pytest.mark.parametrize(
+    "raw_record, expected_record, test_id",
+    [
+        (
+            { # Test case 1: Basic transformation with numeric conversion
+                "ObjectId": "36b492b3-d80e-4b5f-9ac6-35125a19fa0e",
+                "BusinessDate": "/Date(1672531200000)/",
+                "NetSales": "25.50",
+                "__metadata": {"uri": "some-uri"}
+            },
+            {
+                "object_id": "36b492b3-d80e-4b5f-9ac6-35125a19fa0e",
+                "business_date": "2023-01-01T00:00:00+00:00",
+                "net_sales": 25.50
+            },
+            "happy_path"
+        ),
+        (
+            { # Test case 2: Filtering of navigation properties
+                "Id": 123,
+                "Site_ObjectId": "guid-here",
+                "ItemSale_Id": 456
+            },
+            {
+                "id": 123
+            },
+            "filter_nav_properties"
+        ),
+        (
+            { # Test case 3: Handling of null-like strings
+                "SomeField": "null",
+                "AnotherField": ""
+            },
+            {
+                "some_field": None,
+                "another_field": None
+            },
+            "null_handling"
+        )
+    ]
+)
+def test_transform_odata_record(raw_record, expected_record, test_id):
     """
-    Tests the main record transformation function to ensure it correctly
-    converts keys and parses dates without performing other data conversions.
+    Tests the main record transformation function with various scenarios.
     """
-    # This is a sample raw record from the OData API
-    raw_record = {
-        "ObjectId": "36b492b3-d80e-4b5f-9ac6-35125a19fa0e",
-        "BusinessDate": "/Date(1672531200000)/",
-        "NetSales": "25.50",  # Note: This is a string, as the API provides it
-        "__metadata": {"uri": "some-uri"}
-    }
-    
-    # This is the expected output after minimal transformation
-    expected_transformed_record = {
-        "object_id": "36b492b3-d80e-4b5f-9ac6-35125a19fa0e",
-        "business_date": "2023-01-01T00:00:00+00:00",
-        "net_sales": 25.50 # The poller SHOULD convert this to a float
-    }
-    
     transformed = transform_odata_record(raw_record, "Checks")
-    
-    assert transformed == expected_transformed_record
+    assert transformed == expected_record
 
 # --- Integration-style Tests for the Main Sync Logic ---
 

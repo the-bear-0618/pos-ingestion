@@ -20,7 +20,7 @@ on:
         description: 'The maximum number of container instances for the service'
         required: false
         type: string
-        default: "500"
+        default: "200"
       concurrency:
         description: 'The number of concurrent requests per container instance'
         required: false
