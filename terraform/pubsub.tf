@@ -24,9 +24,13 @@ resource "google_pubsub_subscription" "pos_processor_subscription" {
   # This configures the subscription to send messages via HTTP POST
   # to the pos-processor Cloud Run service.
   push_config {
-    # NOTE: This URL will be replaced later by the URL of your deployed
-    # pos-processor Cloud Run service. We will define a service account for auth.
-    push_endpoint = "https://placeholder-your-processor-url.a.run.app"
+    # The endpoint is the URI of the pos-processor Cloud Run service.
+    push_endpoint = google_cloud_run_v2_service.pos_processor_service.uri
+
+    # Authenticate the push request using the processor's service account.
+    oidc_token {
+      service_account_email = google_service_account.pos_processor_sa.email
+    }
   }
 
   # This is the critical Dead-Letter Queue configuration.

@@ -79,10 +79,18 @@ def validate_message(message: dict) -> Tuple[bool, Optional[str]]:
             return True, None
 
         e = errors[0]
+        # To avoid logging sensitive data, we'll truncate long instance values.
+        instance_value = e.instance
+        if isinstance(instance_value, str) and len(instance_value) > 200:
+            instance_value = instance_value[:200] + '...'
+
         error_path = "->".join(map(str, e.path)) if e.path else "root"
-        error_message = f"Validation Error at '{error_path}': {e.message}"
-        logger.warning(error_message)
-        return False, error_message
+        error_details = {
+            "path": error_path,
+            "message": e.message,
+            "instance_value": instance_value
+        }
+        return False, json.dumps(error_details)
     except Exception as e:
         logger.error(f"Unexpected validation error: {e}", exc_info=True)
         return False, "An unexpected error occurred during validation."

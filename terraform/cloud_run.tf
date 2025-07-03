@@ -29,18 +29,9 @@ resource "google_cloud_run_v2_service" "pos_processor_service" {
       # This allows Terraform to create the service successfully before our
       # application image has been built. The CI/CD pipeline will replace
       # this with the correct application image on the first deployment.
+      # The image and environment variables will be managed by the CI/CD pipeline.
+      # We use a public placeholder for the initial creation by Terraform.
       image = "us-docker.pkg.dev/cloudrun/container/hello"
-
-      # Define environment variables needed by the application.
-      # The processor needs to know the project and dataset ID.
-      env {
-        name  = "GCP_PROJECT_ID"
-        value = var.gcp_project_id
-      }
-      env {
-        name  = "BIGQUERY_DATASET_ID"
-        value = google_bigquery_dataset.pos_dataset.dataset_id
-      }
     }
   }
 }
@@ -51,6 +42,7 @@ resource "google_cloud_run_v2_service" "pos_poller_service" {
   project  = var.gcp_project_id
   name     = "pos-poller"
   location = var.region
+  deletion_protection = false
 
   # Ensure the repo exists before trying to reference an image from it.
   depends_on = [google_artifact_registry_repository.pos_services_repo]
@@ -64,25 +56,9 @@ resource "google_cloud_run_v2_service" "pos_poller_service" {
       # NOTE: Using a public placeholder image for initial setup.
       # The CI/CD pipeline will replace this with the correct application
       # image on the first deployment.
+      # The image will be managed by the CI/CD pipeline. We use a public
+      # placeholder for the initial creation by Terraform.
       image = "us-docker.pkg.dev/cloudrun/container/hello"
-
-      # Define environment variables needed by the application.
-      # The poller needs to know the project and the topic to publish to.
-      env {
-        name  = "GCP_PROJECT_ID"
-        value = var.gcp_project_id
-      }
-      env {
-        name  = "PUBSUB_TOPIC_ID"
-        value = google_pubsub_topic.pos_events_topic.name
-      }
-      # The poller also needs the name of the secret to fetch API keys from.
-      # We'll assume a secret named 'pos-api-credentials'.
-      # You would create this secret manually or with Terraform.
-      env {
-        name  = "SECRET_NAME"
-        value = "pos-api-credentials"
-      }
     }
   }
 }
