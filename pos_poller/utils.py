@@ -22,7 +22,7 @@ def to_snake_case(name: str) -> str:
     """
     if not name:
         return ""
-    # Insert underscores before uppercase letters, but not at the start.
-    s1 = re.sub(r'(.)([A-Z][a-z]+)', r'\1_\2', name)
+    # Insert underscores before uppercase letters that start a 'word', but not if already preceded by a non-alphanumeric character.
+    s1 = re.sub(r'([a-zA-Z0-9])([A-Z][a-z]+)', r'\1_\2', name)
     # Handle cases like 'AmountUSD' -> 'Amount_USD'
     return re.sub(r'([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
