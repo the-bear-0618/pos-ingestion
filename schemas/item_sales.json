@@ -73,7 +73,8 @@
         "void_reason_name": { "type": ["string", "null"] },
         "weight": { "type": "number" }
       },
-      "additionalProperties": false,
+
+      "additionalProperties": true,
       "required": []
     }
   }
