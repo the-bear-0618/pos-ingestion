@@ -31,7 +31,7 @@
         "base_price": { "type": "number" },
         "category": { "type": ["string", "null"] },
         "category_external_code": { "type": ["string", "null"] },
-        "category_id": { "type": ["integer", "null"] },
+        "category_id": { "type": ["string", "null"], "format": "uuid" },
         "check_number": { "type": ["integer", "null"] },
         "closed_by_user_external_code": { "type": ["string", "null"] },
         "closed_by_user_object_id": { "type": ["string", "null"], "format": "uuid" },
