@@ -103,6 +103,8 @@ def _process_message(message_data: dict) -> Response:
         return Response(status=204)
 
     # --- 3. Insert into BigQuery ---
+    logger.info(f"[DEBUG] Incoming table={table_id}, event_type={message_data.get('event_type')}")
+    logger.info(f"[DEBUG] Insert payload preview: {json.dumps(rows_to_insert)[:500]}")
     logger.info(f"Attempting BigQuery insert to table {table_id} for sync_id={message_data.get('sync_id')} and record_id={message_data.get('record_id')}")
 
     errors = _insert_into_bigquery(table_id, rows_to_insert)
