@@ -25,7 +25,7 @@ STRING_FIELDS = {'AreaExternalCode'}
 # A comprehensive set of all fields from all schemas that should be numeric.
 # Moving this to config makes it easier to manage without changing application logic.
 NUMERIC_FIELDS = {
-    'Id', 'PartyInfo_Id', 'CheckId', 'ItemSaleId', 'ItemExternalCode',
+    'Id', 'PartyInfo_Id', 'PartyInfoId', 'CheckId', 'ItemSaleId', 'ItemExternalCode',
     'AdjustedByUserExternalCode', 'AdjustmentReasonExternalCode', 'EmployeeNumber',
     'EmployeeNumber2', 'JobNumber', 'ShiftNumber', 'LaborCategoryNumber',
     'UnPaidBreakCounts', 'UnPaidBreakMinutes', 'ExternalCode', 'PaymentNumber',

@@ -92,6 +92,23 @@ def _convert_numeric_fields(record: Dict[str, Any]) -> Dict[str, Any]:
                 logger.warning(f"Could not convert string '{value}' to a number for key '{key}'.")
     return record
 
+def _should_filter_field(key: str, value: Any) -> bool:
+    """Determines if a field should be filtered out during transformation."""
+    # 1. Filter out internal OData metadata fields.
+    if key.startswith('__') or (isinstance(value, dict) and '__deferred' in value):
+        return True
+    
+    # 2. Filter navigation properties (e.g., Site_ObjectId, ItemSale_Id) but keep the primary 'Id'.
+    lower_key = key.lower()
+    if (lower_key.endswith('_objectid') or lower_key.endswith('_id')) and lower_key != 'id':
+        return True
+        
+    # 3. Filter specific problematic fields that have type mismatches.
+    if key in ('DeviceId', 'AreaId'):
+        return True
+        
+    return False
+
 def transform_odata_record(record: Dict[str, Any], entity_name: str) -> Dict[str, Any]:
     """
     Transforms an OData record by filtering unwanted fields, converting keys to
@@ -99,33 +116,19 @@ def transform_odata_record(record: Dict[str, Any], entity_name: str) -> Dict[str
     """
     # First, convert numeric strings to numbers. This is done on raw keys.
     record = _convert_numeric_fields(record)
-    
     transformed = {}
     for key, value in record.items():
-        # 1. Filter out internal OData fields and navigation properties.
-        if key.startswith('__') or (isinstance(value, dict) and '__deferred' in value):
-            continue
-        
-        # Filter navigation properties (e.g., Site_ObjectId, ItemSale_Id) but keep the primary 'Id'.
-        if (key.endswith('_ObjectId') or key.endswith('_Id')) and key != 'Id':
-            continue
-            
-        # Filter specific problematic fields.
-        if key == 'DeviceId':
+        if _should_filter_field(key, value):
             continue
 
-        # 2. Convert key to snake_case.
         new_key = to_snake_case(key)
-        
-        # 3. Parse Microsoft's date format.
         new_value = parse_microsoft_date(value)
 
-        # 4. Enforce data types based on schema expectations.
         if key in STRING_FIELDS and new_value is not None:
             new_value = str(new_value)
         
         if key in NUMERIC_FIELDS and new_value is None:
-            new_value = 0.0
+            new_value = 0.0 # Coerce null numeric fields to 0.0
         
         if new_value == "" or new_value == "null":
             new_value = None
