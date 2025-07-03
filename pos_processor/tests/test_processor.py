@@ -113,7 +113,7 @@ def test_schema_validation_failure(mock_get_bq_client, client):
     mock_get_bq_client.return_value.insert_rows_json.assert_not_called()
 
 @patch('pos_processor.main.get_bigquery_client')
-@patch('pos_processor.schema_validator.validate_message')
+@patch('pos_processor.main.validate_message')
 def test_bigquery_insertion_failure(mock_validate_message, mock_get_bq_client, client):
     """
     Tests the failure path: the message is valid, but the BigQuery API fails.

@@ -206,6 +206,19 @@ def _sync_for_single_date(
             break  # Stop processing this date if a page fails
     return records_for_date
 
+def _get_date_range_for_sync(endpoint_config: dict, days_back: int) -> List[Optional[datetime]]:
+    """
+    Calculates the date range to process based on the endpoint configuration.
+    Returns a list of datetime objects or a list with a single None if no date field is configured.
+    """
+    date_field = endpoint_config.get('date_field')
+    if date_field:
+        CHICAGO_TZ = ZoneInfo("America/Chicago")
+        end_date = datetime.now(CHICAGO_TZ)
+        return [end_date - timedelta(days=i) for i in range(days_back + 1)]
+    else:
+        return [None]
+
 def sync_endpoint(endpoint_name: str, days_back: int) -> int:
     """Syncs an endpoint using the detailed configuration to build the correct filter."""
     sync_id = f"{endpoint_name}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
@@ -221,14 +234,7 @@ def sync_endpoint(endpoint_name: str, days_back: int) -> int:
     site_id, _ = get_api_credentials()
     url = f"{API_BASE_URL}/{endpoint_name}"
     total_records = 0
-    
-    date_field = endpoint_config.get('date_field')
-    if date_field:
-        CHICAGO_TZ = ZoneInfo("America/Chicago")
-        end_date = datetime.now(CHICAGO_TZ)
-        date_range_to_process = [end_date - timedelta(days=i) for i in range(days_back + 1)]
-    else:
-        date_range_to_process = [None] 
+    date_range_to_process = _get_date_range_for_sync(endpoint_config, days_back)
 
     for target_date in date_range_to_process:
         total_records += _sync_for_single_date(
