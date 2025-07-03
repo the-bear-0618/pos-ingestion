@@ -108,6 +108,11 @@ def transform_odata_record(record: Dict[str, Any], entity_name: str) -> Dict[str
         if key.endswith('_ObjectId'):
             continue
         
+        # --- FIX: Ignore DeviceId due to type mismatch with schema ---
+        # The API sends a UUID string, but the schema expects an integer.
+        if key == 'DeviceId':
+            continue
+        
         new_key = to_snake_case(key)
         new_value = parse_microsoft_date(value)
         

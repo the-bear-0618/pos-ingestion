@@ -100,6 +100,24 @@ def _build_sync_summary(results: dict, endpoints_to_sync: list, errors: list) ->
     logger.info(f"Sync process finished. Summary: {json.dumps(summary)}")
     return summary, status_code
 
+def _execute_sync_for_endpoints(endpoints_to_sync: list, days_back: int) -> tuple[dict, list]:
+    """Iterates through endpoints, triggers sync, and collects results."""
+    results = {}
+    errors = []
+    for endpoint in endpoints_to_sync:
+        try:
+            record_count = sync_endpoint(endpoint, days_back)
+            # --- ADDED: Log the successful sync for this endpoint ---
+            logger.info(
+                f"Successfully processed endpoint '{endpoint}'. Published {record_count} records."
+            )
+            results[endpoint] = {'status': 'success', 'records_published': record_count}
+        except Exception as e:
+            logger.error(f"Sync failed for endpoint '{endpoint}': {e}", exc_info=True)
+            results[endpoint] = {'status': 'error', 'message': str(e)}
+            errors.append(endpoint)
+    return results, errors
+
 @app.route('/sync', methods=['POST'])
 def sync() -> Response:
     """
@@ -120,21 +138,7 @@ def sync() -> Response:
 
         logger.info(f"Validated endpoints to sync: {endpoints_to_sync}")
 
-        results = {}
-        errors = []
-
-        for endpoint in endpoints_to_sync:
-            try:
-                record_count = sync_endpoint(endpoint, days_back)
-                # --- ADDED: Log the successful sync for this endpoint ---
-                logger.info(
-                    f"Successfully processed endpoint '{endpoint}'. Published {record_count} records."
-                )
-                results[endpoint] = {'status': 'success', 'records_published': record_count}
-            except Exception as e:
-                logger.error(f"Sync failed for endpoint '{endpoint}': {e}", exc_info=True)
-                results[endpoint] = {'status': 'error', 'message': str(e)}
-                errors.append(endpoint)
+        results, errors = _execute_sync_for_endpoints(endpoints_to_sync, days_back)
 
         summary, status_code = _build_sync_summary(results, endpoints_to_sync, errors)
         return jsonify(summary), status_code
