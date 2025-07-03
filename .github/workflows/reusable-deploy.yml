@@ -16,6 +16,16 @@ on:
         description: 'Service-specific environment variables for the Cloud Run service'
         required: true
         type: string
+      max_instances:
+        description: 'The maximum number of container instances for the service'
+        required: false
+        type: string
+        default: "500"
+      concurrency:
+        description: 'The number of concurrent requests per container instance'
+        required: false
+        type: string
+        default: "10"
     secrets:
       GCP_PROJECT_ID:
         required: true
@@ -87,6 +97,11 @@ jobs:
           gcloud run deploy ${{ inputs.service_name }} \
             --image "${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/${{ inputs.service_name }}:${{ steps.sha.outputs.short_sha }}" \
             --set-env-vars="GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }},${{ inputs.service_specific_env_vars }}" \
-            --max-instances=100 \
+            --max-instances=${{ inputs.max_instances }} \
+            --concurrency=${{ inputs.concurrency }} \
+            --cpu-boost \
             --region ${{ env.GCP_REGION }} \
             --quiet
+
+      - name: Print deployment config
+        run: echo "Deployed ${{ inputs.service_name }} with concurrency ${{ inputs.concurrency }} and max-instances ${{ inputs.max_instances }}"

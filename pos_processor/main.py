@@ -62,6 +62,17 @@ def _prepare_record_for_insertion(message_data: dict) -> tuple[str, list]:
     
     return table_id, [normalized_record]
 
+def _insert_into_bigquery(table_id: str, rows: list) -> list:
+    """
+    Inserts rows into the specified BigQuery table and returns a list of any errors.
+    """
+    full_table_id = f"{PROJECT_ID}.{DATASET_ID}.{table_id}"
+    bq_client = get_bigquery_client()
+    errors = bq_client.insert_rows_json(full_table_id, rows)
+    if not errors:
+        logger.info(f"Successfully inserted {len(rows)} record(s) into {full_table_id}")
+    return errors
+
 def _process_message(message_data: dict) -> Response:
     """
     Handles the core logic of processing a single decoded Pub/Sub message.
@@ -78,17 +89,20 @@ def _process_message(message_data: dict) -> Response:
     table_id, rows_to_insert = _prepare_record_for_insertion(message_data)
     
     # --- 3. Insert into BigQuery ---
-    bq_client = get_bigquery_client()
-    full_table_id = f"{PROJECT_ID}.{DATASET_ID}.{table_id}"
-    errors = bq_client.insert_rows_json(full_table_id, rows_to_insert)
+    errors = _insert_into_bigquery(table_id, rows_to_insert)
     if errors:
-        logger.error(f"BigQuery insert errors for {full_table_id}: {errors}")
+        logger.error(f"BigQuery insert failed for {table_id}: {errors}")
         # Return a server error to trigger a Pub/Sub retry
         return Response("BigQuery insert failed", status=500)
 
-    logger.info(f"Successfully inserted 1 record into {full_table_id}")
     # Acknowledge the message successfully
     return Response(status=204)
+
+def _decode_pubsub_message(envelope: dict) -> dict:
+    """Decodes the base64 data from a Pub/Sub message envelope."""
+    pubsub_message = envelope['message']
+    message_data_str = base64.b64decode(pubsub_message['data']).decode('utf-8')
+    return json.loads(message_data_str)
 
 @app.route('/', methods=['POST'])
 def handle_pubsub_message():
@@ -99,11 +113,7 @@ def handle_pubsub_message():
         return Response("Bad Request: Invalid Pub/Sub message format", status=400)
 
     try:
-        # Decode the message data
-        pubsub_message = envelope['message']
-        message_data_str = base64.b64decode(pubsub_message['data']).decode('utf-8')
-        message_data = json.loads(message_data_str)
-        
+        message_data = _decode_pubsub_message(envelope)
         # Delegate processing to the helper function
         return _process_message(message_data)
 
@@ -117,6 +127,6 @@ def handle_pubsub_message():
         return Response("Internal Server Error", status=500)
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 8080))
-    is_debug = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
-    app.run(host='0.0.0.0', port=port, debug=is_debug)
+    port = int(os.environ.get("PORT", 8080))
+    is_debug = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
+    app.run(host="0.0.0.0", port=port, debug=is_debug)
