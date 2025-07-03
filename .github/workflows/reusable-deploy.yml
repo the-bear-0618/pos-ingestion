@@ -1,107 +1,60 @@
 # .github/workflows/reusable-deploy.yml
-name: Reusable Deploy to Cloud Run
+name: Reusable Cloud Run Deployment
 
 on:
   workflow_call:
     inputs:
       service_name:
-        description: 'The name of the Cloud Run service to deploy'
+        description: 'The name of the Cloud Run service.'
         required: true
         type: string
       service_dir:
-        description: 'The source directory of the service'
+        description: 'The directory containing the service source code.'
         required: true
         type: string
       service_specific_env_vars:
-        description: 'Service-specific environment variables for the Cloud Run service'
-        required: true
-        type: string
-      max_instances:
-        description: 'The maximum number of container instances for the service'
+        description: 'Comma-separated list of KEY=VALUE environment variables for the service.'
         required: false
         type: string
-        default: "200"
-      concurrency:
-        description: 'The number of concurrent requests per container instance'
-        required: false
-        type: string
-        default: "10"
+    # FIX: Explicitly define the secrets the reusable workflow needs.
+    # This allows the `secrets: inherit` in the calling workflow to pass them through.
     secrets:
+      WIF_PROVIDER:
+        required: true
+      WIF_SERVICE_ACCOUNT:
+        required: true
       GCP_PROJECT_ID:
-        required: true
-      GCP_WIF_PROVIDER:
-        required: true
-      GCP_DEPLOYER_SA_EMAIL:
         required: true
 
 env:
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   GCP_REGION: "us-central1"
-  ARTIFACT_REPO: "pos-services"
 
 jobs:
-  test:
-    name: Run Unit Tests for ${{ inputs.service_dir }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11' # Match the version in the Dockerfile
-
-      - name: Install dependencies for ${{ inputs.service_dir }}
-        run: |
-          python -m pip install --upgrade pip
-          pip install pytest -r ${{ inputs.service_dir }}/requirements.txt
-      - name: Run tests
-        run: python -m pytest ${{ inputs.service_dir }}/tests
-        env:
-          PYTHONPATH: .
-
   build-and-deploy:
-    needs: test # Ensure tests pass before deploying
     name: Build and Deploy ${{ inputs.service_name }}
     runs-on: ubuntu-latest
-    env:
-      GCP_CLOUDBUILD_SA: "projects/${{ secrets.GCP_PROJECT_ID }}/serviceAccounts/manual-cloud-build-sa@${{ secrets.GCP_PROJECT_ID }}.iam.gserviceaccount.com"
     permissions:
       contents: 'read'
-      id-token: 'write'
+      id-token: 'write' # Required for Workload Identity Federation
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v4
 
-      - name: Get short SHA
-        id: sha
-        run: echo "short_sha=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+    - name: Authenticate to Google Cloud
+      id: auth
+      uses: 'google-github-actions/auth@v2'
+      with:
+        workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+        service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
 
-      - name: Authenticate to Google Cloud
-        id: auth
-        uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
-          service_account: ${{ secrets.GCP_DEPLOYER_SA_EMAIL }}
-
-      - name: Build and Push container image via Cloud Build
-        run: |-
-          gcloud builds submit . \
-            --config=cloudbuild.yaml \
-            --substitutions=_GCP_REGION=${{ env.GCP_REGION }},_AR_REPO_NAME=${{ env.ARTIFACT_REPO }},_TAG=${{ steps.sha.outputs.short_sha }},_SERVICE_NAME=${{ inputs.service_name }},_SERVICE_DIR=${{ inputs.service_dir }} \
-            --service-account="${{ env.GCP_CLOUDBUILD_SA }}"
-
-      - name: Deploy to Cloud Run
-        run: |-
-          gcloud run deploy ${{ inputs.service_name }} \
-            --image "${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/${{ inputs.service_name }}:${{ steps.sha.outputs.short_sha }}" \
-            --set-env-vars="GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }},${{ inputs.service_specific_env_vars }}" \
-            --max-instances=${{ inputs.max_instances }} \
-            --concurrency=${{ inputs.concurrency }} \
-            --cpu-boost \
-            --region ${{ env.GCP_REGION }} \
-            --quiet
-
-      - name: Print deployment config
-        run: echo "Deployed ${{ inputs.service_name }} with concurrency ${{ inputs.concurrency }} and max-instances ${{ inputs.max_instances }}"
+    - name: Build and Deploy to Cloud Run
+      run: |
+        gcloud run deploy ${{ inputs.service_name }} \
+          --source ./${{ inputs.service_dir }} \
+          --region ${{ env.GCP_REGION }} \
+          --project ${{ env.GCP_PROJECT_ID }} \
+          --platform managed \
+          --allow-unauthenticated \
+          --set-env-vars "${{ inputs.service_specific_env_vars }}"

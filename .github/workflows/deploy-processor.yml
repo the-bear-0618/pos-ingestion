@@ -7,6 +7,8 @@ on:
     branches: [ "main" ]
     paths:
       - 'pos_processor/**'
+      # Redeploy the processor if any data schema changes, as it's responsible for BigQuery insertion.
+      - 'schemas/**.json'
       - '.github/workflows/deploy-processor.yml'
       - '.github/workflows/reusable-deploy.yml' # Also trigger if the reusable workflow changes
 
