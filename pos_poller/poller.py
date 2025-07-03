@@ -103,6 +103,11 @@ def transform_odata_record(record: Dict[str, Any], entity_name: str) -> Dict[str
         if key.startswith('__') or (isinstance(value, dict) and '__deferred' in value):
             continue
         
+        # --- FIX: Ignore expanded navigation properties from OData ---
+        # These often end in '_ObjectId' and are not part of our target schemas.
+        if key.endswith('_ObjectId'):
+            continue
+        
         new_key = to_snake_case(key)
         new_value = parse_microsoft_date(value)
         
