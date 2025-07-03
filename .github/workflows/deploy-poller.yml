@@ -24,4 +24,7 @@ jobs:
       service_name: "pos-poller"
       service_dir: "pos_poller"
       service_specific_env_vars: "TOPIC_ID=pos-events,API_BASE_URL=https://ecm-nsoeservices-bethpage.cbsnorthstar.com/reportservice/salesdata.svc,SITE_ID_SECRET_ID=pos-site-id,API_ACCESS_TOKEN_SECRET_ID=pos-api-access-token,DEFAULT_DAYS_BACK=0"
-    secrets: inherit
+    secrets:
+      WIF_PROVIDER: ${{ secrets.WIF_PROVIDER }}
+      WIF_SERVICE_ACCOUNT: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
