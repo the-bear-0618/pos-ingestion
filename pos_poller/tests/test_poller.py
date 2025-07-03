@@ -87,6 +87,7 @@ def test_sync_endpoint_single_page(mock_sync_dependencies):
     # Configure the mock for fetch_odata_page.
     # When called, it will return a list with two records and indicate no more pages.
     sample_records = [{"Id": 1}, {"Id": 2}]
+    mock_fetch.return_value = sample_records
     
     # --- Act ---
     # Run the main sync function for a single endpoint.

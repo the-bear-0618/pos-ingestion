@@ -121,18 +121,20 @@ def transform_odata_record(record: Dict[str, Any], entity_name: str) -> Dict[str
         if _should_filter_field(key, value):
             continue
 
-        new_key = to_snake_case(key)
         new_value = parse_microsoft_date(value)
 
+        # First, handle empty/null-like strings by converting them to a proper NoneType.
+        if new_value == "" or new_value == "null": 
+            new_value = None
+
+        # Now, enforce data types based on schema expectations.
         if key in STRING_FIELDS and new_value is not None:
             new_value = str(new_value)
         
         if key in NUMERIC_FIELDS and new_value is None:
             new_value = 0.0 # Coerce null numeric fields to 0.0
         
-        if new_value == "" or new_value == "null":
-            new_value = None
-            
+        new_key = to_snake_case(key)
         transformed[new_key] = new_value
     
     return transformed
